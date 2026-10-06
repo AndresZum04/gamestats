@@ -1,0 +1,132 @@
+# Entrega continua: cuando CI termina bien en main (o se crea un tag v*),
+# publica las tres imágenes en GitHub Container Registry y, si la VM de
+# Azure está configurada (secreto DEPLOY_HOST), la actualiza por SSH.
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: cd
+  cancel-in-progress: false
+
+jobs:
+  images:
+    name: Publicar imágenes en GHCR
+    # Desde workflow_run solo si CI salió bien; un tag siempre publica.
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      prefix: ${{ steps.meta.outputs.prefix }}
+      deploy: ${{ steps.meta.outputs.deploy }}
+    strategy:
+      matrix:
+        service: [analyzer, ingestor, simulator]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Etiquetas
+        id: meta
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          # GHCR exige el nombre del dueño en minúsculas.
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          short="${SHA::7}"
+          prefix="ghcr.io/$owner/gamestats"
+          image="$prefix-${{ matrix.service }}"
+          tags="$image:$short"
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tags="$tags,$image:$GITHUB_REF_NAME"
+            tag="$GITHUB_REF_NAME"
+          else
+            tags="$tags,$image:latest"
+            tag="$short"
+          fi
+          {
+            echo "tags=$tags"
+            echo "tag=$tag"
+            echo "prefix=$prefix"
+            echo "deploy=$([ -n "$DEPLOY_HOST" ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: Desplegar en la VM de Azure
+    needs: images
+    # Sin la VM configurada no se despliega, pero el workflow sigue en verde.
+    if: needs.images.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Copiar deploy/ a la VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "deploy/docker-compose.prod.yml,deploy/deploy.sh"
+          target: "~/gamestats"
+          strip_components: 1
+
+      - name: Actualizar los contenedores
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          TAG: ${{ needs.images.outputs.tag }}
+          IMAGE_PREFIX: ${{ needs.images.outputs.prefix }}
+          GHCR_USER: ${{ github.repository_owner }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: TAG,IMAGE_PREFIX,GHCR_USER,GHCR_PAT
+          script: |
+            mkdir -p ~/gamestats && cd ~/gamestats
+            chmod +x deploy.sh
+            ./deploy.sh "$TAG"
+
+      - name: Verificar que responde desde afuera
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          for i in $(seq 1 10); do
+            if curl --fail --silent "http://$HOST:8081/health"; then
+              echo; echo "Desplegado: http://$HOST:8081/dashboard"; exit 0
+            fi
+            echo "Intento $i sin respuesta, esperando..."; sleep 6
+          done
+          exit 1

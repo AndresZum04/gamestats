@@ -125,3 +125,8 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | El desinstalador usa `--rmi all` en vez de `--rmi local` | Las imágenes tienen nombre propio (`gamestats-*`) y `--rmi local` solo borra las que no lo tienen |
 | 2026-10-06 | El desinstalador con `--yes` conserva los datos; borrarlos sin preguntar requiere `--delete-data` | El plan pide preguntar antes de borrar; en modo no interactivo lo seguro es no borrar |
 | 2026-10-06 | `install.ps1` y `uninstall.ps1` se guardan en UTF-8 con BOM y CRLF, y escriben `.env` sin BOM | PowerShell 5.1 lee como ANSI los scripts sin BOM (rompe los acentos) y `Set-Content -Encoding utf8` agrega un BOM que confunde a compose |
+| 2026-10-06 | Los nombres de imagen en GHCR usan el dueño en minúsculas (`ghcr.io/andreszum/gamestats-*`) | GHCR rechaza mayúsculas; el workflow lo convierte con `${GITHUB_REPOSITORY_OWNER,,}` |
+| 2026-10-06 | CD publica imágenes siempre, pero solo despliega si existe el secreto `DEPLOY_HOST` | Así el repositorio queda en verde antes de crear la VM |
+| 2026-10-06 | `deploy/deploy.sh` concentra el despliegue (carpetas, `.env`, login a GHCR, pull, up y prune); el workflow solo lo copia y lo llama por SSH | El mismo script sirve para volver a una versión anterior a mano: `./deploy.sh <sha>` |
+| 2026-10-06 | En producción cada servicio tiene límite de memoria (analyzer 512 MB, ingestor y simulador 128 MB) y `setup-vm.sh` agrega 1 GB de swap | Una VM B1s tiene 1 GB; sin límite la JVM tomaría el 75 % de la RAM de la máquina |
+| 2026-10-06 | El caché de compilación de CD usa el de GitHub Actions (`type=gha`) por servicio | La compilación de Scala tarda varios minutos; con caché solo se recompila lo que cambió |

@@ -1,0 +1,51 @@
+# GameStats en producción (VM de Azure). Igual al docker-compose.yml de
+# desarrollo, pero con las imágenes ya publicadas en GHCR en lugar de
+# compilarlas, reinicio automático y límites de memoria para una VM chica.
+#
+#   TAG=<sha corto> docker compose -f docker-compose.prod.yml up -d
+#
+# deploy.sh escribe el .env con GAMESTATS_DATA y el uid del usuario.
+
+x-data: &data ${GAMESTATS_DATA:-./gamestats-data}:/data
+x-user: &user "${GAMESTATS_UID:-10001}:${GAMESTATS_GID:-10001}"
+
+services:
+  analyzer:
+    image: ${IMAGE_PREFIX:-ghcr.io/andreszum/gamestats}-analyzer:${TAG:-latest}
+    restart: unless-stopped
+    user: *user
+    mem_limit: 512m
+    ports: ["8081:8081"]
+    environment: { PORT: "8081", RESULTS_DIR: /data/results }
+    volumes: [*data]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 5s
+      retries: 20
+      start_period: 30s
+
+  ingestor:
+    image: ${IMAGE_PREFIX:-ghcr.io/andreszum/gamestats}-ingestor:${TAG:-latest}
+    restart: unless-stopped
+    user: *user
+    mem_limit: 128m
+    ports: ["8080:8080"]
+    environment:
+      ANALYZER_URL: http://analyzer:8081
+      CONFIG_DIR: /app/configs/games
+      DATA_DIR: /data
+    volumes: [*data]
+    depends_on: { analyzer: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 5s
+      retries: 20
+
+  simulator:
+    image: ${IMAGE_PREFIX:-ghcr.io/andreszum/gamestats}-simulator:${TAG:-latest}
+    user: *user
+    mem_limit: 128m
+    profiles: ["demo"]
+    command: ["--mode", "stream", "--events-dir", "/data/events", "--seed", "${SIM_SEED:-0}"]
+    volumes: [*data]
+    depends_on: { ingestor: { condition: service_healthy } }
