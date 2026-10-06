@@ -9,7 +9,7 @@ import io.circe.Json
 import java.time.Instant
 
 /** racing-pro: R1 to R7 per driver and R5 for the race. Placements come from MATCH_FINISHED through
-  * MatchContext; a PARTIAL race has none, so R3 is left out. Patterns are added in T15.
+  * MatchContext; a PARTIAL race has none, so R3 is left out. Patterns: P1 and P2.
   */
 object RacingAnalyzer extends ComposedAnalyzer[RacingEvent]:
   val gameId = "racing-pro"
@@ -51,3 +51,6 @@ object RacingAnalyzer extends ComposedAnalyzer[RacingEvent]:
 
   override protected def matchMetrics(ctx: MatchContext[RacingEvent]): Map[String, Json] =
     RacingStats.raceSummary(ctx.events)
+
+  override protected def detectors: List[PatternDetector[RacingEvent]] =
+    List(patterns.Comeback.detect, patterns.ConsistentStreak.detect)

@@ -9,7 +9,7 @@ import io.circe.Json
 import java.time.Instant
 
 /** arena-clash: A1 to A5 per player and A3 for the match. teamId comes from MATCH_STARTED.teams
-  * through MatchContext. Patterns are added in T15.
+  * through MatchContext. Patterns: P3 to P6.
   */
 object ArenaAnalyzer extends ComposedAnalyzer[ArenaEvent]:
   val gameId = "arena-clash"
@@ -50,3 +50,11 @@ object ArenaAnalyzer extends ComposedAnalyzer[ArenaEvent]:
       if ctx.batch.partial then None
       else ctx.common.collectFirst { case f: CommonEvent.MatchFinished => f.winnerTeam }.flatten
     ArenaStats.matchSummary(ctx.events, ctx.teams, ctx.players, winner)
+
+  override protected def detectors: List[PatternDetector[ArenaEvent]] =
+    List(
+      patterns.KillStreak.detect,
+      patterns.Revenge.detect,
+      patterns.TeamComeback.detect,
+      patterns.RageQuit.detect
+    )

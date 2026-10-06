@@ -92,3 +92,8 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | El marcador de A3 se cuenta desde las eliminaciones (existe también en lotes `PARTIAL`); `winnerTeam` solo sale de `MATCH_FINISHED` | Una partida parcial no tiene ganador conocido |
 | 2026-10-06 | MVP: en empate gana el primer `playerId` en orden alfabético | Resultado determinista; el plan no cubría empates |
 | 2026-10-06 | `avgDamagePerHit`, `headshotPct`, `longestKillM`, `damagePerKill` y `weaponConversionPct` solo aparecen cuando hay datos para calcularlos | Mismo criterio que en carreras: no inventar ceros |
+| 2026-10-06 | P2: las ventanas de 3 vueltas que cumplen y se solapan se reportan como una sola racha | Las vueltas 4 a 7 de un piloto son una racha, no dos patrones |
+| 2026-10-06 | P3: una racha son eliminaciones del mismo jugador, sin morir entre ellas, todas dentro de 10 s desde la primera; una eliminación fuera de la ventana empieza otra racha | El plan no definía cómo cortar rachas largas; así cada racha se reporta una vez |
+| 2026-10-06 | P1 requiere al menos 4 pilotos y el resultado final; P5 requiere `winnerTeam`; ninguno se detecta en lotes `PARTIAL` | Ambos dependen del resultado final |
+| 2026-10-06 | P4 pertenece a quien se venga (B) y una misma eliminación de vuelta cuenta como una sola venganza | Evita reportar dos veces la misma venganza si A eliminó a B dos veces antes |
+| 2026-10-06 | Las descripciones de los patrones están en español | Son texto para el tablero, igual que el ejemplo del contrato |
