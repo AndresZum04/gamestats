@@ -107,3 +107,5 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | El tablero inserta todo dato como texto (`textContent`), nunca como HTML | Los ids vienen de los eventos; un `playerId` con etiquetas no puede inyectar código |
 | 2026-10-06 | Si Chart.js no carga (sin internet), el tablero sigue funcionando y avisa que falta el gráfico | La máquina del profesor podría no tener conexión |
 | 2026-10-06 | `GET /` redirige a `/dashboard` | Abrir `http://localhost:8081` lleva directo al tablero |
+| 2026-10-06 | La verificación de estilo de `analysis/` es una prueba munit (`StyleSuite`) que además de `var` y `scala.collection.mutable` rechaza `null`, `cats.effect`, `java.io`/`java.nio` y `println` | Corre en `sbt test` local y en CI; también protege que el análisis no tenga efectos |
+| 2026-10-06 | Los lotes escritos a mano viven dentro de cada suite; `fixtures/` tiene los constructores (`Fixtures`) y el cargador de escenarios (`Samples`) | Cada valor esperado queda junto al lote que lo produce, con la cuenta en comentarios |
