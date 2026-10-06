@@ -64,3 +64,9 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | La probabilidad de enfrentamiento en combate es 0.25 por paso (no 0.45) y la de que un piloto se retire, 30 % por carrera | Con 0.45 las partidas terminaban en 4 min; con 15 % de retiros la semilla 42 no generaba ningún `PLAYER_LEFT` en carreras |
 | 2026-10-06 | Las pruebas de los escenarios recalculan en Go los patrones de esas partidas | Son un oráculo del diseño del simulador, solo en pruebas; el análisis real sigue siendo de Scala |
 | 2026-10-06 | `demo-full.jsonl` usa 8 partidas de ajedrez además de 8 de cada juego principal | Hace que el análisis genérico tenga suficientes datos en la demo |
+| 2026-10-06 | En los eventos tipados de Scala, `playerId` es un campo `String` de cada evento de jugador y no un `Option` dentro de `Meta`; `Meta` lleva `eventId`, `seq` y `atMs` | Si un evento de jugador llega sin jugador, la conversión devuelve `None` y se descarta; así el código de análisis nunca necesita `.get` sobre un `Option` |
+| 2026-10-06 | `track` y `map` de `MATCH_STARTED` se unen en un solo campo `venue` | Son el mismo concepto (dónde se juega) según el juego |
+| 2026-10-06 | En `data`, una clave opcional ausente es válida, pero con el tipo equivocado hace que el evento se descarte | Mismo criterio que las claves obligatorias: un dato mal formado no debe producir estadísticas a medias |
+| 2026-10-06 | Scala escribe las fechas con milisegundos (`2026-09-10T14:03:22.120Z`), igual que Go | El `Encoder[Instant]` por defecto de circe omite los milisegundos cuando son cero |
+| 2026-10-06 | Los tipos de los agregados entre partidas se definen en T16 y no en T10 | Se crean junto con las funciones que los usan |
+| 2026-10-06 | El analyzer se compila y prueba con la imagen `sbtscala/scala-sbt` (Temurin 21) | sbt no está instalado en Windows; es la misma imagen que usará el Dockerfile de T19 |
