@@ -1,0 +1,16 @@
+# Solo el código fuente entra al contexto de construcción.
+.git
+**/target
+**/.bsp
+**/.bloop
+**/.metals
+.idea
+.vscode
+data/*
+!data/samples
+gamestats-data
+ci-artifacts
+ci-artifacts.tar.gz
+**/node_modules
+zzZ
+.env

@@ -1,0 +1,55 @@
+# GameStats: analyzer (Scala) + ingestor (Go) y, con el perfil "demo", el
+# simulador que hace de consola de juegos.
+#
+#   docker compose up -d --build                       # levanta todo
+#   docker compose --profile demo run --rm simulator   # genera partidas
+#
+# Los datos viven en una carpeta visible del equipo anfitrión
+# (GAMESTATS_DATA), para poder ver los eventos y los resultados en JSON.
+# En Linux los contenedores corren con el uid del usuario (GAMESTATS_UID,
+# lo escribe install.sh en .env) para poder escribir en esa carpeta.
+
+x-data: &data ${GAMESTATS_DATA:-./gamestats-data}:/data
+x-user: &user "${GAMESTATS_UID:-10001}:${GAMESTATS_GID:-10001}"
+
+services:
+  analyzer:
+    build: { context: ., dockerfile: analyzer/Dockerfile }
+    image: gamestats-analyzer
+    user: *user
+    ports: ["8081:8081"]
+    environment: { PORT: "8081", RESULTS_DIR: /data/results }
+    volumes: [*data]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 5s
+      retries: 20
+      start_period: 20s
+
+  ingestor:
+    build: { context: ., dockerfile: ingestor/Dockerfile }
+    image: gamestats-ingestor
+    user: *user
+    ports: ["8080:8080"]
+    environment:
+      ANALYZER_URL: http://analyzer:8081
+      CONFIG_DIR: /app/configs/games
+      DATA_DIR: /data
+    volumes: [*data]
+    depends_on: { analyzer: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 5s
+      retries: 20
+
+  # No habla con el ingestor: solo escribe archivos en la carpeta
+  # compartida, igual que hará la consola real. SIM_SEED=0 (por defecto)
+  # genera partidas nuevas en cada corrida; SIM_SEED=42 es reproducible.
+  simulator:
+    build: { context: ., dockerfile: simulator/Dockerfile }
+    image: gamestats-simulator
+    user: *user
+    profiles: ["demo"]
+    command: ["--mode", "stream", "--events-dir", "/data/events", "--seed", "${SIM_SEED:-0}"]
+    volumes: [*data]
+    depends_on: { ingestor: { condition: service_healthy } }

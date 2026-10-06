@@ -57,7 +57,7 @@ func main() {
 	flag.IntVar(&o.racing, "racing", 4, "racing matches")
 	flag.IntVar(&o.arena, "arena", 4, "combat matches")
 	flag.IntVar(&o.chess, "chess", 2, "chess matches")
-	flag.Int64Var(&o.seed, "seed", 42, "random seed")
+	flag.Int64Var(&o.seed, "seed", 42, "random seed; 0 picks one and tags the matchIds so every run is new")
 	flag.Float64Var(&o.speed, "speed", 60, "time acceleration factor (>= 1)")
 	flag.Float64Var(&o.invalidRate, "invalid-rate", 0.03, "share of invalid events")
 	flag.IntVar(&o.batch, "batch", 50, "events per POST (http mode)")
@@ -73,10 +73,19 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// With --seed 0 every run is different: a random seed, and a tag in the
+	// matchIds so the ingestor does not take them as already seen.
+	tag := ""
+	if o.seed == 0 {
+		o.seed = 1 + time.Now().UnixNano()%1_000_000_000
+		tag = fmt.Sprintf("-%04x", o.seed%0x10000)
+		fmt.Printf("random seed %d (matchIds end in %s)\n", o.seed, tag)
+	}
+
 	for round := 0; ; round++ {
-		suffix := ""
+		suffix := tag
 		if round > 0 {
-			suffix = fmt.Sprintf("-l%d", round) // new matchIds, or they would be late
+			suffix = fmt.Sprintf("%s-l%d", tag, round) // new matchIds, or they would be late
 		}
 		if err := runRound(ctx, o, o.seed+int64(round), suffix); err != nil {
 			if errors.Is(err, context.Canceled) {
