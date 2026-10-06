@@ -130,3 +130,6 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | `deploy/deploy.sh` concentra el despliegue (carpetas, `.env`, login a GHCR, pull, up y prune); el workflow solo lo copia y lo llama por SSH | El mismo script sirve para volver a una versión anterior a mano: `./deploy.sh <sha>` |
 | 2026-10-06 | En producción cada servicio tiene límite de memoria (analyzer 512 MB, ingestor y simulador 128 MB) y `setup-vm.sh` agrega 1 GB de swap | Una VM B1s tiene 1 GB; sin límite la JVM tomaría el 75 % de la RAM de la máquina |
 | 2026-10-06 | El caché de compilación de CD usa el de GitHub Actions (`type=gha`) por servicio | La compilación de Scala tarda varios minutos; con caché solo se recompila lo que cambió |
+| 2026-10-06 | `scripts/demo.sh` usa `jq` si está instalado y si no lo corre desde la imagen `ghcr.io/jqlang/jq` | El criterio pide que la demo funcione en una máquina con solo Docker |
+| 2026-10-06 | La demo carga `demo-full.jsonl` copiándolo a la carpeta de eventos (una sola vez) y después corre el simulador en vivo con semilla al azar | Muestra los dos caminos de entrada; repetir la demo suma partidas nuevas en vez de rechazar duplicados |
+| 2026-10-06 | En el paso de tolerancia a fallos el simulador se corre con `--no-deps` | Sin esa opción `docker compose run` vuelve a levantar el analyzer detenido |
