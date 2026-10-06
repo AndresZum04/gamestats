@@ -1,0 +1,44 @@
+{
+  "events": {
+    "MATCH_STARTED": {
+      "playerRequired": false,
+      "data": { "players": "array", "mode": "string" }
+    },
+    "MATCH_FINISHED": {
+      "playerRequired": false,
+      "data": { "durationMs": "number", "results": "array" }
+    },
+    "PLAYER_JOINED": {
+      "playerRequired": true,
+      "data": {}
+    },
+    "PLAYER_LEFT": {
+      "playerRequired": true,
+      "data": { "reason": "string" }
+    },
+    "PLAYER_DISCONNECTED": {
+      "playerRequired": true,
+      "data": {}
+    },
+    "PLAYER_RECONNECTED": {
+      "playerRequired": true,
+      "data": { "awayMs": "number" }
+    },
+    "SCORE_CHANGED": {
+      "playerRequired": true,
+      "data": { "delta": "number", "total": "number" }
+    },
+    "TURN_STARTED": {
+      "playerRequired": true,
+      "data": { "turn": "number" }
+    },
+    "TURN_ENDED": {
+      "playerRequired": true,
+      "data": { "turn": "number", "durationMs": "number" }
+    },
+    "PLAYER_ACTION": {
+      "playerRequired": true,
+      "data": {}
+    }
+  }
+}

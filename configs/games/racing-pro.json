@@ -1,0 +1,26 @@
+{
+  "gameId": "racing-pro",
+  "versions": ["1.0"],
+  "events": {
+    "LAP_COMPLETED": {
+      "playerRequired": true,
+      "data": { "lap": "number", "lapTimeMs": "number", "position": "number", "topSpeedKmh": "number" }
+    },
+    "POSITION_CHANGED": {
+      "playerRequired": true,
+      "data": { "lap": "number", "from": "number", "to": "number" }
+    },
+    "PIT_STOP": {
+      "playerRequired": true,
+      "data": { "lap": "number", "durationMs": "number", "tire": "string" }
+    },
+    "PENALTY": {
+      "playerRequired": true,
+      "data": { "lap": "number", "seconds": "number", "reason": "string" }
+    },
+    "CRASH": {
+      "playerRequired": true,
+      "data": { "lap": "number", "severity": "string" }
+    }
+  }
+}
