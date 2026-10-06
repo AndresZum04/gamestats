@@ -1,0 +1,10 @@
+{
+  "gameId": "card-duel",
+  "versions": ["0.9", "1.0"],
+  "events": {
+    "CARD_PLAYED": {
+      "playerRequired": true,
+      "data": { "cardId": "string", "cost": "number" }
+    }
+  }
+}
