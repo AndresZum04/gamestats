@@ -143,3 +143,14 @@ class RoutesSuite extends munit.FunSuite:
         assertEquals(get(s"/api/v1/matches?limit=$bad")._1, Status.BadRequest)
     }
   }
+
+  test("GET /dashboard serves the HTML board and / redirects to it") {
+    withApp { (app, _) =>
+      val resp = app(Request[IO](Method.GET, uri"/dashboard")).unsafeRunSync()
+      assertEquals(resp.status, Status.Ok)
+      assert(resp.contentType.exists(_.mediaType == MediaType.text.html))
+      assert(resp.as[String].unsafeRunSync().contains("<title>GameStats</title>"))
+      val root = app(Request[IO](Method.GET, uri"/")).unsafeRunSync()
+      assertEquals(root.status, Status.SeeOther)
+    }
+  }

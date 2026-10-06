@@ -81,6 +81,10 @@ class RacingStatsSuite extends munit.FunSuite:
   test("R1: best lap, average and population standard deviation") {
     // p-a: avg 91000; deviations -1000, 0, +1000 -> sqrt(2,000,000 / 3) = 816.5
     assertEquals(metric("p-a", "bestLapMs"), Json.fromLong(90000))
+    assertEquals(
+      metric("p-a", "lapTimesMs"),
+      Json.arr(Json.fromLong(90000), Json.fromLong(91000), Json.fromLong(92000))
+    )
     assertEquals(metric("p-a", "avgLapMs"), Metrics.num(91000))
     assertEquals(metric("p-a", "lapStdDevMs"), Metrics.num(816.5))
     // p-c: avg 90666.7; deviations -1666.7, +4333.3, -2666.7 -> sqrt(28,666,667 / 3) = 3091.2

@@ -102,3 +102,8 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | G4 = jugadores con `left = true` entre todas las participaciones (jugador, partida) del juego | Es la definición del plan aplicada a los resultados guardados |
 | 2026-10-06 | `limit` acepta de 1 a 1000 y fuera de ese rango responde 400; por defecto 20 en partidas y leaderboard, 100 en patrones | Un `limit` inválido se informa en vez de ignorarse |
 | 2026-10-06 | `/players/{id}` y `/games/{id}/summary` responden 404 si no hay partidas analizadas | Distingue "no existe" de "existe pero vacío" |
+| 2026-10-06 | Cada piloto guarda `lapTimesMs` (sus tiempos de vuelta en orden) en sus métricas | El gráfico de tiempos por vuelta del tablero lo necesita y el resultado guardado no incluye los eventos |
+| 2026-10-06 | El tablero filtra los patrones recientes por tipo, con el conteo de cada uno | P2 aparece muchas veces en carreras al azar y taparía los demás patrones |
+| 2026-10-06 | El tablero inserta todo dato como texto (`textContent`), nunca como HTML | Los ids vienen de los eventos; un `playerId` con etiquetas no puede inyectar código |
+| 2026-10-06 | Si Chart.js no carga (sin internet), el tablero sigue funcionando y avisa que falta el gráfico | La máquina del profesor podría no tener conexión |
+| 2026-10-06 | `GET /` redirige a `/dashboard` | Abrir `http://localhost:8081` lleva directo al tablero |

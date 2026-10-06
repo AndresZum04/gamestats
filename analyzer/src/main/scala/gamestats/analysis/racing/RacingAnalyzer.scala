@@ -25,6 +25,7 @@ object RacingAnalyzer extends ComposedAnalyzer[RacingEvent]:
       lapStats(times).map { s =>
         p -> Map(
           "laps" -> int(ls.size.toLong),
+          "lapTimesMs" -> Json.arr(times.map(Json.fromLong)*), // for the lap time chart
           "bestLapMs" -> int(s.bestMs),
           "avgLapMs" -> num(s.avgMs),
           "lapStdDevMs" -> num(s.stdDevMs),

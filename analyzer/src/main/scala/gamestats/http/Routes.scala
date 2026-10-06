@@ -11,6 +11,7 @@ import io.circe.syntax.*
 import org.http4s.*
 import org.http4s.circe.*
 import org.http4s.dsl.io.*
+import org.http4s.implicits.*
 import org.slf4j.LoggerFactory
 
 import java.time.Instant
@@ -28,6 +29,13 @@ object Routes:
 
   def apply(store: ResultStore): HttpRoutes[IO] = HttpRoutes.of[IO] {
     case GET -> Root / "health" => Ok(Json.obj("status" -> Json.fromString("ok")))
+
+    case req @ GET -> Root / "dashboard" =>
+      StaticFile
+        .fromResource("/dashboard/index.html", Some(req))
+        .getOrElseF(NotFound(error("dashboard missing")))
+
+    case GET -> Root => SeeOther(headers.Location(uri"/dashboard"))
 
     case req @ POST -> Root / "api" / "v1" / "matches" =>
       req.attemptAs[MatchBatch](jsonOf[IO, MatchBatch]).value.flatMap {

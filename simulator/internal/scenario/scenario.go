@@ -195,9 +195,10 @@ func revenge(b *match.Builder) {
 	arena.Build(b, arena.Spec{Map: "Harbor", Red: red, Blue: blue, Kills: kills})
 }
 
-// teamback (P5): RED goes ahead 12 to 5 ("RRB" five times, then "RR"),
-// then BLUE scores 25 of the next 40 ("RBB" ten times, then "RB" five
-// times) and wins 30 to 27 with the last kill. BLUE was 7 behind.
+// teamback (P5): RED goes ahead 12 to 5 ("RRB" five times, then "RR")
+// and 13 to 5 with the first kill of the second phase; then BLUE scores 25
+// of those 40 kills ("RBB" ten times, then "RB" five times) and wins 30 to
+// 27 with the last one. BLUE was 8 behind at worst.
 func teamback(b *match.Builder) {
 	r := &roster{}
 	first := filler(r, "RRBRRBRRBRRBRRBRR", sec(15), 17, 0, 0)
