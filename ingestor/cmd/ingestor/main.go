@@ -18,6 +18,7 @@ import (
 	"github.com/AndresZum/gamestats/ingestor/internal/ingest"
 	"github.com/AndresZum/gamestats/ingestor/internal/model"
 	"github.com/AndresZum/gamestats/ingestor/internal/pipeline"
+	"github.com/AndresZum/gamestats/ingestor/internal/sender"
 	"github.com/AndresZum/gamestats/ingestor/internal/state"
 	"github.com/AndresZum/gamestats/ingestor/internal/validation"
 )
@@ -77,14 +78,17 @@ func run() error {
 	}, matches, rejected)
 	go dispatcher.Run()
 
-	// TODO(T06): replace with the sender pool. For now batches are only
-	// logged.
+	outbox, err := sender.NewOutbox(filepath.Join(cfg.DataDir, "outbox"))
+	if err != nil {
+		return err
+	}
+	send := sender.New(sender.DefaultConfig(cfg.AnalyzerURL, cfg.SenderWorkers), matches, outbox)
+	go send.RetryOutbox(ctx)
+	// After ctx ends the senders park every remaining batch in the outbox.
 	consumed := make(chan struct{})
 	go func() {
 		defer close(consumed)
-		for b := range batches {
-			slog.Info("batch would be sent", "matchId", b.MatchID, "status", b.Status, "events", b.EventCount)
-		}
+		send.Run(ctx, batches)
 	}()
 
 	mux := http.NewServeMux()

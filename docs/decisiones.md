@@ -43,3 +43,8 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | `lastEventAt` es la hora en que el ingestor recibió el último evento, no el `timestamp` del juego | La inactividad se mide con el reloj real; en modo `file` los timestamps son de otra fecha |
 | 2026-10-06 | El ticker del worker revisa cada `min(5 s, MATCH_IDLE_TIMEOUT/2)` | Con el timeout de 50 ms que usan las pruebas, revisar cada 5 s no detectaría la inactividad a tiempo |
 | 2026-10-06 | `GET /api/v1/matches` y `/matches/{matchId}` se implementan en T05, el resto de la API en T07 | Los criterios de T04 y T05 los usan para verificar |
+| 2026-10-06 | Un 4xx distinto de 429 marca la partida `SEND_FAILED` pero no va al outbox | Reenviar un lote que el analizador rechazó daría el mismo error cada 30 s |
+| 2026-10-06 | Con el contexto cancelado (apagado), el sender guarda el lote en el outbox sin intentar enviarlo | T07 pide que el apagado deje las partidas en el outbox y que todo termine en 15 s; los reintentos con espera no caben |
+| 2026-10-06 | El reintentador hace un solo intento por archivo y por ronda, y corta la ronda al primer error de red o 5xx | La ronda de 30 s ya es el reintento; si el analizador sigue caído, los demás archivos fallarían igual |
+| 2026-10-06 | Antes de borrar un archivo del outbox se verifica que no cambió desde que se leyó | Si mientras tanto se guardó un lote más nuevo de la misma partida, no se pierde |
+| 2026-10-06 | Los archivos del outbox corruptos o rechazados con 4xx se renombran a `.json.failed` | Se conservan para revisarlos a mano, pero no se reintentan para siempre |
