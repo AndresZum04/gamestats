@@ -16,6 +16,7 @@ type Config struct {
 	DataDir          string
 	WatchInterval    time.Duration
 	MatchIdleTimeout time.Duration
+	MatchFinishGrace time.Duration
 	SenderWorkers    int
 	InputBuffer      int
 }
@@ -33,6 +34,9 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 	if cfg.MatchIdleTimeout, err = duration("MATCH_IDLE_TIMEOUT", 120*time.Second); err != nil {
+		return cfg, err
+	}
+	if cfg.MatchFinishGrace, err = duration("MATCH_FINISH_GRACE", 5*time.Second); err != nil {
 		return cfg, err
 	}
 	if cfg.SenderWorkers, err = positiveInt("SENDER_WORKERS", 4); err != nil {

@@ -13,9 +13,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/AndresZum/gamestats/ingestor/internal/api"
 	"github.com/AndresZum/gamestats/ingestor/internal/config"
 	"github.com/AndresZum/gamestats/ingestor/internal/ingest"
 	"github.com/AndresZum/gamestats/ingestor/internal/model"
+	"github.com/AndresZum/gamestats/ingestor/internal/pipeline"
+	"github.com/AndresZum/gamestats/ingestor/internal/state"
 	"github.com/AndresZum/gamestats/ingestor/internal/validation"
 )
 
@@ -66,17 +69,26 @@ func run() error {
 	watcher := ingest.NewDirWatcher(eventsDir, intake, offsets, cfg.WatchInterval, tailerIdleTimeout)
 	go watcher.Run(ctx)
 
-	// TODO(T05): replace with the dispatcher. For now accepted events are
-	// only logged.
+	matches := state.NewRegistry()
+	batches := make(chan model.MatchBatch, cfg.SenderWorkers*2)
+	dispatcher := pipeline.NewDispatcher(input, batches, pipeline.Config{
+		IdleTimeout: cfg.MatchIdleTimeout,
+		FinishGrace: cfg.MatchFinishGrace,
+	}, matches, rejected)
+	go dispatcher.Run()
+
+	// TODO(T06): replace with the sender pool. For now batches are only
+	// logged.
 	consumed := make(chan struct{})
 	go func() {
 		defer close(consumed)
-		for ev := range input {
-			slog.Info("event accepted", "matchId", ev.MatchID, "seq", ev.Seq, "type", ev.Type)
+		for b := range batches {
+			slog.Info("batch would be sent", "matchId", b.MatchID, "status", b.Status, "events", b.EventCount)
 		}
 	}()
 
 	mux := http.NewServeMux()
+	(&api.Matches{Registry: matches}).Register(mux)
 	mux.Handle("POST /api/v1/events", &ingest.EventsHandler{Intake: intake})
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -105,7 +117,7 @@ func run() error {
 	if err := offsets.Save(); err != nil {
 		slog.Error("save offsets", "err", err)
 	}
-	close(input)
+	close(input) // the dispatcher flushes open matches as PARTIAL
 	<-consumed
 	rejected.Close()
 	return nil
