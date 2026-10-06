@@ -76,16 +76,18 @@ func comeback(b *match.Builder) {
 	racing.Build(b, spec)
 }
 
-// steady (P2): p-kev runs laps 4 to 7 within 0.1 % of each other (inside
-// the 0.5 % of the plan). Every other window of three laps, his included,
-// differs more than 1.6 % from its average. His total (917.13 s) keeps him
-// 4th, so positions never swing enough to create a P1.
+// steady (P2): p-kev runs laps 4 to 7 within 0.1 % of each other (the
+// plan asks for 0.5 %). His other laps alternate 1.5 s above and below
+// that pace, so every other window of three laps differs more than 1 %
+// from its average. His spread (about 1162 ms) is below the 1250 ms of the
+// alternating drivers, so his consistency index is the highest of the
+// race. His total (917.53 s) keeps him 4th: nobody gets a P1.
 func steady(b *match.Builder) {
 	spec := racing.Spec{Laps: 10, Track: "Suzuka"}
 	for i, id := range drivers {
 		d := racing.Driver{ID: id, Laps: alternating(89000 + 500*i)}
 		if id == "p-kev" {
-			d.Laps = []int{90500, 93000, 89100, 91750, 91800, 91700, 91780, 94000, 90500, 93000}
+			d.Laps = []int{93250, 90250, 93250, 91750, 91800, 91700, 91780, 90250, 93250, 90250}
 		}
 		spec.Drivers = append(spec.Drivers, d)
 	}

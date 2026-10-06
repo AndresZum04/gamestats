@@ -33,7 +33,8 @@ type Penalty struct {
 type Disconnect struct{ Lap, AwayMs int }
 
 // Driver is everything that happens to one driver. Laps holds each lap time
-// in ms, already including the time lost in incidents. A driver with fewer
+// in ms, including time lost in crashes and pit stops; time penalties are
+// not in the laps, they are added to the race time for the final result. A driver with fewer
 // laps than the race retired after the last one (PLAYER_LEFT).
 type Driver struct {
 	ID          string
@@ -120,7 +121,15 @@ func Build(b *match.Builder, spec Spec) {
 		}
 	}
 
-	// Results: finishers by total time, then retired drivers by laps done.
+	// Results: finishers by race time (laps plus time penalties), then
+	// retired drivers by laps done.
+	raceTime := make([]int, n)
+	for i, d := range spec.Drivers {
+		raceTime[i] = cum[i]
+		for _, p := range d.Penalties {
+			raceTime[i] += p.Seconds * 1000
+		}
+	}
 	order := make([]int, n)
 	for i := range order {
 		order[i] = i
@@ -130,7 +139,7 @@ func Build(b *match.Builder, spec Spec) {
 		if la != lc {
 			return la > lc
 		}
-		return cum[order[a]] < cum[order[c]]
+		return raceTime[order[a]] < raceTime[order[c]]
 	})
 	end := 0
 	results := make([]any, n)
@@ -243,7 +252,7 @@ func Generate(b *match.Builder, players []string) {
 				d.Crashes = append(d.Crashes, c)
 			}
 			if rng.Float64() < 0.03 {
-				t += 5000
+				// A time penalty is added to the race time, not to the lap.
 				d.Penalties = append(d.Penalties, Penalty{Lap: lap, Seconds: 5, Reason: []string{"TRACK_LIMITS", "UNSAFE_RELEASE", "COLLISION"}[rng.Intn(3)]})
 			}
 			if rng.Float64() < 0.01 {
