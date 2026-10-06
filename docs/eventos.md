@@ -32,7 +32,7 @@ La otra forma es `POST /api/v1/events` en el `ingestor` (puerto 8080), con un ev
 | --- | --- | --- | --- |
 | `schemaVersion` | string | sí | Versión del formato del sobre. Hoy solo existe `"1.0"` |
 | `eventId` | string | sí | UUID v4 en minúsculas, único entre todos los eventos |
-| `timestamp` | string | sí | RFC 3339 en UTC con milisegundos, por ejemplo `2026-10-10T14:03:22.120Z` |
+| `timestamp` | string | sí | RFC 3339 en UTC con milisegundos, por ejemplo `2026-09-10T14:03:22.120Z` |
 | `gameId` | string | sí | Minúsculas y guiones (`racing-pro`). Tiene que existir en `configs/games/` |
 | `gameVersion` | string | sí | Tiene que estar en `versions` de la configuración del juego |
 | `matchId` | string | sí | Único entre juegos, por ejemplo `rp-0007`. Solo letras, dígitos, `-` y `_`, máximo 128 caracteres |
@@ -48,7 +48,7 @@ La otra forma es `POST /api/v1/events` en el `ingestor` (puerto 8080), con un ev
 Un evento completo se ve así:
 
 ```json
-{"schemaVersion":"1.0","eventId":"6f1c2a4e-9b1d-4c3e-8a77-2d5e9f0b1c11","timestamp":"2026-10-10T14:00:00.000Z","gameId":"racing-pro","gameVersion":"1.0","matchId":"rp-0007","seq":1,"playerId":null,"type":"MATCH_STARTED","source":{"consoleId":"sim-01","sessionId":"s-42"},"data":{"players":["p-ana","p-luis","p-sofi"],"mode":"GRAND_PRIX","track":"Monza"}}
+{"schemaVersion":"1.0","eventId":"6f1c2a4e-9b1d-4c3e-8a77-2d5e9f0b1c11","timestamp":"2026-09-10T14:00:00.000Z","gameId":"racing-pro","gameVersion":"1.0","matchId":"rp-0007","seq":1,"playerId":null,"type":"MATCH_STARTED","source":{"consoleId":"sim-01","sessionId":"s-42"},"data":{"players":["p-ana","p-luis","p-sofi"],"mode":"GRAND_PRIX","track":"Monza"}}
 ```
 
 En los catálogos de abajo, los ejemplos muestran solo `playerId`, `type`, `action` y `data` para que se lean mejor. El resto del sobre siempre va igual. Las líneas completas están en `data/samples/examples.jsonl`.

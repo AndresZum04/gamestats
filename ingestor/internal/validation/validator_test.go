@@ -16,7 +16,7 @@ const (
 )
 
 // fixedNow is after every timestamp in examples.jsonl.
-var fixedNow = time.Date(2026, 10, 10, 17, 0, 0, 0, time.UTC)
+var fixedNow = time.Date(2026, 9, 10, 17, 0, 0, 0, time.UTC)
 
 func newTestValidator(t *testing.T, dir string) *Validator {
 	t.Helper()
@@ -95,7 +95,7 @@ func baseEvent() map[string]any {
 	return map[string]any{
 		"schemaVersion": "1.0",
 		"eventId":       "0b7d3e11-55aa-4f2c-9d10-7a8b6c5d4e33",
-		"timestamp":     "2026-10-10T14:01:32.410Z",
+		"timestamp":     "2026-09-10T14:01:32.410Z",
 		"gameId":        "racing-pro",
 		"gameVersion":   "1.0",
 		"matchId":       "rp-0007",
@@ -163,8 +163,8 @@ func TestValidateRejections(t *testing.T) {
 		{"eventId not a UUID", set("eventId", "event-1"), CodeInvalidField},
 		{"eventId UUID v1", set("eventId", "0b7d3e11-55aa-1f2c-9d10-7a8b6c5d4e33"), CodeInvalidField},
 		{"eventId uppercase", set("eventId", "0B7D3E11-55AA-4F2C-9D10-7A8B6C5D4E33"), CodeInvalidField},
-		{"timestamp without millis", set("timestamp", "2026-10-10T14:01:32Z"), CodeInvalidField},
-		{"timestamp with offset", set("timestamp", "2026-10-10T14:01:32.410+00:00"), CodeInvalidField},
+		{"timestamp without millis", set("timestamp", "2026-09-10T14:01:32Z"), CodeInvalidField},
+		{"timestamp with offset", set("timestamp", "2026-09-10T14:01:32.410+00:00"), CodeInvalidField},
 		{"timestamp with space", set("timestamp", "2026-10-10 14:01:32.410Z"), CodeInvalidField},
 		{"timestamp in the future", set("timestamp", inFuture), CodeInvalidField},
 		{"seq zero", set("seq", 0), CodeInvalidField},
@@ -284,7 +284,7 @@ func TestValidateKeepsNumbersExact(t *testing.T) {
 	if !strings.Contains(string(out), `"lapTimeMs":9007199254740993`) {
 		t.Errorf("number changed: %s", out)
 	}
-	if got.Time != time.Date(2026, 10, 10, 14, 1, 32, 410e6, time.UTC) {
+	if got.Time != time.Date(2026, 9, 10, 14, 1, 32, 410e6, time.UTC) {
 		t.Errorf("Time = %v", got.Time)
 	}
 }

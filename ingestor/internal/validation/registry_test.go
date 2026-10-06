@@ -67,7 +67,7 @@ func TestLoadRegistryNewGameFromTestdata(t *testing.T) {
 	}
 	v := newTestValidator(t, copyConfigs(t, map[string]string{"card-duel.json": string(card)}))
 
-	own := `{"schemaVersion":"1.0","eventId":"5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a801","timestamp":"2026-10-10T16:00:00.000Z","gameId":"card-duel","gameVersion":"0.9","matchId":"cd-1","seq":3,"playerId":"p-ana","type":"CARD_PLAYED","data":{"cardId":"fireball","cost":4}}`
+	own := `{"schemaVersion":"1.0","eventId":"5e6f7a8b-9c0d-4e1f-a2b3-c4d5e6f7a801","timestamp":"2026-09-10T16:00:00.000Z","gameId":"card-duel","gameVersion":"0.9","matchId":"cd-1","seq":3,"playerId":"p-ana","type":"CARD_PLAYED","data":{"cardId":"fireball","cost":4}}`
 	if _, verr := v.Validate([]byte(own)); verr != nil {
 		t.Errorf("own type rejected: %v", verr)
 	}

@@ -42,6 +42,14 @@ func (d *Dedup) Check(eventID string) *ValidationError {
 	return nil
 }
 
+// Forget removes eventID. It is used when an event passed Check but could
+// not be queued (shutdown), so a later retry is not taken as a duplicate.
+func (d *Dedup) Forget(eventID string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	delete(d.seen, eventID)
+}
+
 // Cleanup removes ids older than the ttl and returns how many it removed.
 func (d *Dedup) Cleanup() int {
 	d.mu.Lock()

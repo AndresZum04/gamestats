@@ -26,3 +26,12 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-05 | `Dedup` va aparte de `Validate`; `LATE_EVENT` lo decide el dispatcher (T05) | Solo se marcan como vistos los eventos que pasaron la validación, y solo el dispatcher sabe qué partidas ya se enviaron |
 | 2026-10-05 | El nombre de cada archivo de `configs/games/` debe ser `<gameId>.json` y no se permiten campos desconocidos | Un error de tipeo en la configuración detiene el arranque en vez de validar con reglas equivocadas |
 | 2026-10-05 | `go test -race` se corre en el contenedor `golang:1.22` | El detector de carreras necesita cgo y gcc, que no están en Windows; además confirma la versión de Go del plan |
+| 2026-10-05 | Las fechas de los ejemplos pasan de `2026-10-10` a `2026-09-10`; el simulador usará esa fecha base en modo `file` | Con el reloj real, eventos del 10 de octubre se rechazan como `INVALID_FIELD` (más de 5 min en el futuro) hasta esa fecha |
+| 2026-10-05 | El paquete `config` se crea en T04 y no en T07 | `main` ya necesita `DATA_DIR`, `CONFIG_DIR`, `WATCH_INTERVAL` e `INPUT_BUFFER` |
+| 2026-10-05 | Tailers y HTTP comparten un `Intake` (validar, `Dedup`, encolar o rechazar) | Una sola ruta de entrada: las dos fuentes aplican exactamente las mismas reglas |
+| 2026-10-05 | HTTP revisa si hay espacio para todo el lote antes de procesarlo y si no responde 503 | Evita aceptar la mitad de un arreglo y dejar al cliente sin saber qué reintentar |
+| 2026-10-05 | Arreglo de más de 1000 eventos: 400. Cuerpo de más de 5 MB: 413. Cuerpo que no es JSON: 202 con un rechazo `MALFORMED_JSON` | El primer caso es un error del cliente, no de un evento; el último queda registrado en `rejected.jsonl` como pide la especificación |
+| 2026-10-05 | El tailer abre el archivo solo cuando creció y lo cierra después de leer | En Windows un archivo abierto no se puede renombrar ni borrar; así el juego nunca queda bloqueado |
+| 2026-10-05 | Las líneas en blanco de un archivo de eventos se ignoran, no se rechazan | No son eventos; rechazarlas solo ensucia `rejected.jsonl` |
+| 2026-10-05 | Entre reinicios, el reemplazo de un archivo se detecta solo si quedó más corto que el offset | `os.SameFile` compara datos que no se pueden guardar en disco; dentro de una misma ejecución sí se usa |
+| 2026-10-05 | Si el proceso muere sin apagado limpio, se pueden releer hasta 5 s de eventos | Los offsets se guardan cada 5 s y `Dedup` vive en memoria; con SIGINT o SIGTERM se guardan al salir y no pasa |

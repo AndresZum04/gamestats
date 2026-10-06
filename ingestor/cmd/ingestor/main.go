@@ -1,9 +1,112 @@
 // Command ingestor receives, validates and groups game events, then sends
-// complete matches to the analyzer. Implemented from T03 onwards.
+// complete matches to the analyzer.
 package main
 
-import "log/slog"
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+	"time"
+
+	"github.com/AndresZum/gamestats/ingestor/internal/config"
+	"github.com/AndresZum/gamestats/ingestor/internal/ingest"
+	"github.com/AndresZum/gamestats/ingestor/internal/model"
+	"github.com/AndresZum/gamestats/ingestor/internal/validation"
+)
+
+const (
+	tailerIdleTimeout = 5 * time.Minute
+	offsetsSaveEvery  = 5 * time.Second
+	recentRejections  = 200
+)
 
 func main() {
-	slog.Info("ingestor starting")
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	if err := run(); err != nil {
+		slog.Error("ingestor stopped", "err", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	registry, err := validation.LoadRegistry(cfg.ConfigDir)
+	if err != nil {
+		return err
+	}
+	eventsDir := filepath.Join(cfg.DataDir, "events")
+	if err := os.MkdirAll(eventsDir, 0o755); err != nil {
+		return err
+	}
+	slog.Info("ingestor starting", "port", cfg.Port, "games", registry.GameIDs(), "eventsDir", eventsDir)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	dedup := validation.NewDedup(validation.DefaultDedupTTL)
+	go dedup.Run(ctx, validation.DefaultDedupCleanup)
+
+	rejected, err := ingest.NewRejectedWriter(filepath.Join(cfg.DataDir, "rejected", "rejected.jsonl"), recentRejections)
+	if err != nil {
+		return err
+	}
+	input := make(chan model.Event, cfg.InputBuffer)
+	intake := ingest.NewIntake(validation.NewValidator(registry), dedup, rejected, input)
+
+	offsets := ingest.LoadOffsets(filepath.Join(cfg.DataDir, "state", "offsets.json"))
+	go offsets.Run(ctx, offsetsSaveEvery)
+	watcher := ingest.NewDirWatcher(eventsDir, intake, offsets, cfg.WatchInterval, tailerIdleTimeout)
+	go watcher.Run(ctx)
+
+	// TODO(T05): replace with the dispatcher. For now accepted events are
+	// only logged.
+	consumed := make(chan struct{})
+	go func() {
+		defer close(consumed)
+		for ev := range input {
+			slog.Info("event accepted", "matchId", ev.MatchID, "seq", ev.Seq, "type", ev.Type)
+		}
+	}()
+
+	mux := http.NewServeMux()
+	mux.Handle("POST /api/v1/events", &ingest.EventsHandler{Intake: intake})
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	})
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.ListenAndServe() }()
+
+	select {
+	case <-ctx.Done():
+	case err := <-serveErr:
+		if !errors.Is(err, http.ErrServerClosed) {
+			stop()
+			return err
+		}
+	}
+
+	// Shutdown order: stop the producers (HTTP and tailers), save where
+	// each file was left, then close the channels they wrote to.
+	slog.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(shutdownCtx)
+	watcher.Wait()
+	if err := offsets.Save(); err != nil {
+		slog.Error("save offsets", "err", err)
+	}
+	close(input)
+	<-consumed
+	rejected.Close()
+	return nil
 }

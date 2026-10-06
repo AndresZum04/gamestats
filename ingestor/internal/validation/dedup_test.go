@@ -20,7 +20,7 @@ func TestDedupRejectsSecondCopy(t *testing.T) {
 }
 
 func TestDedupCleanupForgetsOldIDs(t *testing.T) {
-	now := time.Date(2026, 10, 10, 14, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 9, 10, 14, 0, 0, 0, time.UTC)
 	d := NewDedup(time.Hour)
 	d.now = func() time.Time { return now }
 
