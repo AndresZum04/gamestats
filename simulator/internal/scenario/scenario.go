@@ -44,23 +44,24 @@ func New(s Scenario, rng *rand.Rand) match.Match {
 
 var drivers = []string{"p-ana", "p-luis", "p-sofi", "p-kev", "p-dani", "p-mari", "p-gabo", "p-vale"}
 
-// alternating gives lap times base, base+2500, base, ... Any 3 consecutive
-// laps then differ about 1.8 % from their average, above the 1 % of P2.
+// alternating gives lap times base, base+3000, base, ... Any 3 consecutive
+// laps then differ about 2.2 % from their average, above the 1 % of P2,
+// and the consistency index stays at 0.984 or below.
 func alternating(base int) []int {
 	laps := make([]int, 10)
 	for i := range laps {
 		laps[i] = base
 		if i%2 == 1 {
-			laps[i] += 2500
+			laps[i] += 3000
 		}
 	}
 	return laps
 }
 
 // comeback (P1): p-ana is the fastest (88.0 s laps) but crashes in lap 2
-// and loses 20 s. After lap 2 she is 8th (198.5 s against 188.1 s of the
-// slowest) and finishes 2nd: 912.5 s, behind p-luis (902.5 s) and ahead of
-// p-sofi (915.5 s). The other two drivers in the last three after lap 2
+// and loses 20 s. After lap 2 she is 8th (199.0 s against 188.6 s of the
+// slowest) and finishes 2nd: 915.0 s, behind p-luis (905.0 s) and ahead of
+// p-sofi (918.0 s). The other two drivers in the last three after lap 2
 // finish 7th and 8th, so nobody else matches P1.
 func comeback(b *match.Builder) {
 	bases := []int{88000, 89000, 90300, 90800, 91300, 91800, 92300, 92800}
@@ -79,9 +80,10 @@ func comeback(b *match.Builder) {
 // steady (P2): p-kev runs laps 4 to 7 within 0.1 % of each other (the
 // plan asks for 0.5 %). His other laps alternate 1.5 s above and below
 // that pace, so every other window of three laps differs more than 1 %
-// from its average. His spread (about 1162 ms) is below the 1250 ms of the
-// alternating drivers, so his consistency index is the highest of the
-// race. His total (917.53 s) keeps him 4th: nobody gets a P1.
+// from its average. His spread (about 1162 ms, consistency 0.987) is below
+// the 1500 ms of the alternating drivers (0.984 at most), so his index is
+// the highest of the race. His total (917.53 s) keeps him 4th, between
+// 915.0 s and 925.0 s: nobody gets a P1.
 func steady(b *match.Builder) {
 	spec := racing.Spec{Laps: 10, Track: "Suzuka"}
 	for i, id := range drivers {
