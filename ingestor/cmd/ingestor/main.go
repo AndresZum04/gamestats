@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -27,6 +28,7 @@ const (
 	tailerIdleTimeout = 5 * time.Minute
 	offsetsSaveEvery  = 5 * time.Second
 	recentRejections  = 200
+	shutdownTimeout   = 15 * time.Second
 )
 
 func main() {
@@ -91,14 +93,8 @@ func run() error {
 		send.Run(ctx, batches)
 	}()
 
-	mux := http.NewServeMux()
-	(&api.Matches{Registry: matches}).Register(mux)
-	mux.Handle("POST /api/v1/events", &ingest.EventsHandler{Intake: intake})
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
-	})
-	srv := &http.Server{Addr: ":" + cfg.Port, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	handler := (&api.Server{Intake: intake, Rejected: rejected, Registry: matches, Sender: send}).Handler()
+	srv := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()
 
@@ -112,17 +108,31 @@ func run() error {
 	}
 
 	// Shutdown order: stop the producers (HTTP and tailers), save where
-	// each file was left, then close the channels they wrote to.
-	slog.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-	_ = srv.Shutdown(shutdownCtx)
-	watcher.Wait()
-	if err := offsets.Save(); err != nil {
-		slog.Error("save offsets", "err", err)
+	// each file was left, then close the input channel. That close travels
+	// down the pipeline: the dispatcher flushes open matches as PARTIAL,
+	// the senders park them in the outbox (ctx is already cancelled) and
+	// return when the batch channel closes.
+	slog.Info("shutting down", "timeout", shutdownTimeout.String())
+	deadline := time.Now().Add(shutdownTimeout)
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		shutdownCtx, cancel := context.WithDeadline(context.Background(), deadline)
+		defer cancel()
+		_ = srv.Shutdown(shutdownCtx)
+		watcher.Wait()
+		if err := offsets.Save(); err != nil {
+			slog.Error("save offsets", "err", err)
+		}
+		close(input)
+		<-consumed
+		rejected.Close()
+	}()
+	select {
+	case <-finished:
+		slog.Info("ingestor stopped cleanly", "outboxSize", send.OutboxSize())
+		return nil
+	case <-time.After(time.Until(deadline)):
+		return fmt.Errorf("shutdown took longer than %s", shutdownTimeout)
 	}
-	close(input) // the dispatcher flushes open matches as PARTIAL
-	<-consumed
-	rejected.Close()
-	return nil
 }

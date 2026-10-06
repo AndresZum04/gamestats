@@ -48,3 +48,9 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | El reintentador hace un solo intento por archivo y por ronda, y corta la ronda al primer error de red o 5xx | La ronda de 30 s ya es el reintento; si el analizador sigue caído, los demás archivos fallarían igual |
 | 2026-10-06 | Antes de borrar un archivo del outbox se verifica que no cambió desde que se leyó | Si mientras tanto se guardó un lote más nuevo de la misma partida, no se pierde |
 | 2026-10-06 | Los archivos del outbox corruptos o rechazados con 4xx se renombran a `.json.failed` | Se conservan para revisarlos a mano, pero no se reintentan para siempre |
+| 2026-10-06 | En `/api/v1/stats`, `rejected` incluye `LATE_EVENT`, que se decide después de aceptar el evento; por eso `accepted + rejected` puede superar a `received` | Todos los rechazos pasan por `RejectedWriter`, que es donde se cuentan; separar los tardíos complicaría la lectura |
+| 2026-10-06 | `activeMatches` cuenta las partidas en estado `OPEN`; además se expone `matchesByState` | Es la cifra que pide el plan y el desglose ayuda en la demo |
+| 2026-10-06 | El middleware no registra `GET /health` | Docker lo llama cada 5 s y taparía el resto de los logs |
+| 2026-10-06 | `GET /api/v1/rejected` acepta `limit` de 1 a 200 (por defecto 50); fuera de rango responde 400 | En memoria solo se guardan los últimos 200 |
+| 2026-10-06 | Si el apagado tarda más de 15 s, el proceso sale con código 1 | Cumple el límite del plan y deja claro en los logs que algo se trabó |
+| 2026-10-06 | Un `api.Server` arma todas las rutas y el middleware | `main` solo conecta piezas; las rutas se prueban sin abrir un puerto |

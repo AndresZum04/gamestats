@@ -37,6 +37,9 @@ type RejectedWriter struct {
 
 	mu     sync.RWMutex
 	recent []Rejection // last keep rejections, oldest first
+
+	countsMu sync.Mutex
+	counts   map[validation.Code]int64
 }
 
 // NewRejectedWriter opens (or creates) path for appending and starts the
@@ -49,13 +52,21 @@ func NewRejectedWriter(path string, keep int) (*RejectedWriter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open rejected file: %w", err)
 	}
-	w := &RejectedWriter{ch: make(chan Rejection, 1024), done: make(chan struct{}), keep: keep}
+	w := &RejectedWriter{
+		ch: make(chan Rejection, 1024), done: make(chan struct{}), keep: keep,
+		counts: make(map[validation.Code]int64),
+	}
 	go w.run(f)
 	return w, nil
 }
 
 // Record queues a rejection. It must not be called after Close.
 func (w *RejectedWriter) Record(raw []byte, verr *validation.ValidationError) {
+	// Counted here, not in the writer goroutine, so /stats agrees with an
+	// HTTP answer the moment it is returned.
+	w.countsMu.Lock()
+	w.counts[verr.Code]++
+	w.countsMu.Unlock()
 	if len(raw) > maxRawBytes {
 		raw = append(raw[:maxRawBytes:maxRawBytes], "...(truncated)"...)
 	}
@@ -103,4 +114,15 @@ func (w *RejectedWriter) Recent(limit int) []Rejection {
 func (w *RejectedWriter) Close() {
 	w.closeOnce.Do(func() { close(w.ch) })
 	<-w.done
+}
+
+// Counts returns how many rejections were recorded per code.
+func (w *RejectedWriter) Counts() map[validation.Code]int64 {
+	w.countsMu.Lock()
+	defer w.countsMu.Unlock()
+	out := make(map[validation.Code]int64, len(w.counts))
+	for c, n := range w.counts {
+		out[c] = n
+	}
+	return out
 }

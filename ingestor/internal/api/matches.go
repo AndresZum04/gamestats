@@ -1,8 +1,6 @@
-// Package api serves the read-only endpoints of the ingestor.
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"sort"
 
@@ -28,39 +26,28 @@ type MatchDetail struct {
 	LeftPlayers         []string `json:"leftPlayers"`
 }
 
-// Matches serves the match endpoints from the state registry.
-type Matches struct {
-	Registry *state.Registry
-}
-
-// Register adds the routes to mux.
-func (m *Matches) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/v1/matches", m.list)
-	mux.HandleFunc("GET /api/v1/matches/{matchId}", m.get)
-}
-
-func (m *Matches) list(w http.ResponseWriter, _ *http.Request) {
-	snaps := m.Registry.List()
+func (s *Server) listMatches(w http.ResponseWriter, _ *http.Request) {
+	snaps := s.Registry.List()
 	out := make([]MatchSummary, len(snaps))
-	for i, s := range snaps {
-		out[i] = summary(s)
+	for i, snap := range snaps {
+		out[i] = summary(snap)
 	}
 	writeJSON(w, http.StatusOK, out)
 }
 
-func (m *Matches) get(w http.ResponseWriter, r *http.Request) {
-	s, ok := m.Registry.Get(r.PathValue("matchId"))
+func (s *Server) getMatch(w http.ResponseWriter, r *http.Request) {
+	snap, ok := s.Registry.Get(r.PathValue("matchId"))
 	if !ok {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "match not found"})
 		return
 	}
 	d := MatchDetail{
-		MatchSummary:        summary(s),
+		MatchSummary:        summary(snap),
 		ConnectedPlayers:    []string{},
 		DisconnectedPlayers: []string{},
 		LeftPlayers:         []string{},
 	}
-	for id, st := range s.Players {
+	for id, st := range snap.Players {
 		switch st {
 		case state.PlayerActive:
 			d.ConnectedPlayers = append(d.ConnectedPlayers, id)
@@ -85,10 +72,4 @@ func summary(s state.Snapshot) MatchSummary {
 		ActivePlayers: s.ActivePlayers,
 		LastEventAt:   model.FormatTime(s.LastEventAt),
 	}
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
 }
