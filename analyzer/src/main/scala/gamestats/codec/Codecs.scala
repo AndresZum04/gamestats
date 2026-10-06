@@ -73,3 +73,10 @@ object Codecs:
   given Codec.AsObject[PatternMatch] = deriveCodec
   given Codec.AsObject[PlayerMatchStats] = deriveCodec
   given Codec.AsObject[MatchAnalysis] = deriveCodec
+  given Codec.AsObject[MatchSummary] = deriveCodec
+  given Codec.AsObject[PlayerGameStats] = deriveCodec
+  given Codec.AsObject[PlayerProfile] = deriveCodec
+  given Codec.AsObject[LeaderboardEntry] = deriveCodec
+  given Codec.AsObject[Leaderboard] = deriveCodec
+  given Codec.AsObject[WeaponStat] = deriveCodec
+  given Codec.AsObject[GameSummary] = deriveCodec

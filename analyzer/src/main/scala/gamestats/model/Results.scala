@@ -41,3 +41,59 @@ final case class MatchAnalysis(
     players: List[PlayerMatchStats],
     patterns: List[PatternMatch]
 )
+
+/** One line of GET /api/v1/matches. */
+final case class MatchSummary(
+    matchId: String,
+    gameId: String,
+    partial: Boolean,
+    analyzedAt: Instant,
+    durationMs: Long,
+    players: Int,
+    events: Int,
+    patterns: Int
+)
+
+/** A player's record in one game, over all stored matches. avgMetric is the game's tiebreak metric
+  * (consistency in racing, K/D in combat).
+  */
+final case class PlayerGameStats(
+    gameId: String,
+    matches: Int,
+    wins: Int,
+    metric: Option[String],
+    avgMetric: Option[Double]
+)
+
+final case class PlayerProfile(playerId: String, games: List[PlayerGameStats])
+
+final case class LeaderboardEntry(
+    rank: Int,
+    playerId: String,
+    matches: Int,
+    wins: Int,
+    avgMetric: Option[Double]
+)
+
+final case class Leaderboard(
+    gameId: String,
+    metric: Option[String],
+    entries: List[LeaderboardEntry]
+)
+
+final case class WeaponStat(weapon: String, kills: Int)
+
+/** GET /api/v1/games/{gameId}/summary: G4, A6, matches and average duration.
+  */
+final case class GameSummary(
+    gameId: String,
+    matches: Int,
+    partialMatches: Int,
+    avgDurationMs: Double,
+    playerEntries: Int,
+    playersLeft: Int,
+    abandonmentRate: Double,
+    mostEffectiveWeapon: Option[WeaponStat],
+    weapons: List[WeaponStat],
+    patterns: Map[String, Int]
+)

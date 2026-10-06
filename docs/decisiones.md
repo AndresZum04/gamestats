@@ -97,3 +97,8 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | P1 requiere al menos 4 pilotos y el resultado final; P5 requiere `winnerTeam`; ninguno se detecta en lotes `PARTIAL` | Ambos dependen del resultado final |
 | 2026-10-06 | P4 pertenece a quien se venga (B) y una misma eliminación de vuelta cuenta como una sola venganza | Evita reportar dos veces la misma venganza si A eliminó a B dos veces antes |
 | 2026-10-06 | Las descripciones de los patrones están en español | Son texto para el tablero, igual que el ejemplo del contrato |
+| 2026-10-06 | Victoria para el leaderboard: podio (puesto 3 o mejor) en carreras, puesto 1 en los demás juegos; desempate por el promedio de `consistency` (carreras) o K/D (combate), después por id | El plan define victoria en carreras y combate; el resto usa el primer lugar |
+| 2026-10-06 | Las partidas `PARTIAL` cuentan como jugadas pero nunca como victoria; su métrica entra al promedio si existe | No tienen resultado final |
+| 2026-10-06 | G4 = jugadores con `left = true` entre todas las participaciones (jugador, partida) del juego | Es la definición del plan aplicada a los resultados guardados |
+| 2026-10-06 | `limit` acepta de 1 a 1000 y fuera de ese rango responde 400; por defecto 20 en partidas y leaderboard, 100 en patrones | Un `limit` inválido se informa en vez de ignorarse |
+| 2026-10-06 | `/players/{id}` y `/games/{id}/summary` responden 404 si no hay partidas analizadas | Distingue "no existe" de "existe pero vacío" |

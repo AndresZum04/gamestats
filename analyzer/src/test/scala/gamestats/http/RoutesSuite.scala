@@ -107,3 +107,39 @@ class RoutesSuite extends munit.FunSuite:
       )
     }
   }
+
+  test("aggregate endpoints answer with data for racing and combat") {
+    import gamestats.codec.Codecs.given
+    import io.circe.syntax.*
+    withApp { (app, _) =>
+      List("rp-scn-comeback", "rp-scn-steady", "ac-scn-spree", "ac-scn-teamback")
+        .map(gamestats.fixtures.Samples.scenario)
+        .foreach(b => assertEquals(run(app, post(b.asJson.noSpaces))._1, Status.Ok))
+
+      def get(path: String): (Status, Json) =
+        run(app, Request[IO](Method.GET, Uri.unsafeFromString(path)))
+
+      val (_, matches) = get("/api/v1/matches?gameId=arena-clash")
+      assertEquals(matches.asArray.map(_.size), Some(2))
+      assertEquals(get("/api/v1/matches?limit=1")._2.asArray.map(_.size), Some(1))
+      assertEquals(
+        get("/api/v1/players/p-ana")._2.hcursor.downField("games").values.map(_.size),
+        Some(2)
+      )
+      assertEquals(
+        get("/api/v1/games/racing-pro/leaderboard")._2.hcursor.get[String]("metric"),
+        Right("consistency")
+      )
+      assertEquals(
+        get("/api/v1/games/arena-clash/summary")._2.hcursor.get[Int]("matches"),
+        Right(2)
+      )
+      assertEquals(get("/api/v1/patterns")._2.asArray.map(_.size), Some(4))
+      assertEquals(get("/api/v1/patterns?patternId=P5")._2.asArray.map(_.size), Some(1))
+
+      assertEquals(get("/api/v1/players/nobody")._1, Status.NotFound)
+      assertEquals(get("/api/v1/games/chess-lite/summary")._1, Status.NotFound)
+      for bad <- List("0", "1001", "abc") do
+        assertEquals(get(s"/api/v1/matches?limit=$bad")._1, Status.BadRequest)
+    }
+  }

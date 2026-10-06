@@ -2,7 +2,7 @@ package gamestats.http
 
 import cats.data.Kleisli
 import cats.effect.IO
-import gamestats.analysis.AnalyzerRegistry
+import gamestats.analysis.{Aggregates, AnalyzerRegistry}
 import gamestats.codec.Codecs.given
 import gamestats.model.{MatchAnalysis, MatchBatch}
 import gamestats.store.ResultStore
@@ -38,12 +38,58 @@ object Routes:
         case Right(batch) => analyzeAndStore(store, batch)
       }
 
+    case GET -> Root / "api" / "v1" / "matches" :? GameParam(game) +& LimitParam(limit) =>
+      withLimit(limit, 20) { n =>
+        store.all.flatMap(all => Ok(Aggregates.recentMatches(all, game, n).asJson))
+      }
+
+    case GET -> Root / "api" / "v1" / "players" / playerId =>
+      store.all.map(Aggregates.player(_, playerId)).flatMap {
+        case Some(profile) => Ok(profile.asJson)
+        case None          => NotFound(error(s"player $playerId has no analyzed matches"))
+      }
+
+    case GET -> Root / "api" / "v1" / "games" / gameId / "summary" =>
+      store.all.map(Aggregates.gameSummary(_, gameId)).flatMap {
+        case Some(summary) => Ok(summary.asJson)
+        case None          => NotFound(error(s"game $gameId has no analyzed matches"))
+      }
+
+    case GET -> Root / "api" / "v1" / "games" / gameId / "leaderboard" :? LimitParam(limit) =>
+      withLimit(limit, 20) { n =>
+        store.all.flatMap(all => Ok(Aggregates.leaderboard(all, gameId, n).asJson))
+      }
+
+    case GET -> Root / "api" / "v1" / "patterns" :? GameParam(game) +& PatternParam(
+          pattern
+        ) +& LimitParam(limit) =>
+      withLimit(limit, 100) { n =>
+        store.all.flatMap(all => Ok(Aggregates.patterns(all, game, pattern, n).asJson))
+      }
+
     case GET -> Root / "api" / "v1" / "matches" / matchId =>
       store.get(matchId).flatMap {
         case Some(a) => Ok(a.asJson)
         case None    => NotFound(error(s"match $matchId not found"))
       }
   }
+
+  private object GameParam extends OptionalQueryParamDecoderMatcher[String]("gameId")
+  private object PatternParam extends OptionalQueryParamDecoderMatcher[String]("patternId")
+  private object LimitParam extends OptionalQueryParamDecoderMatcher[String]("limit")
+
+  private val maxLimit = 1000
+
+  /** Parses ?limit=; a value that is not a number from 1 to 1000 is a 400. */
+  private def withLimit(raw: Option[String], default: Int)(
+      f: Int => IO[Response[IO]]
+  ): IO[Response[IO]] =
+    raw match
+      case None => f(default)
+      case Some(v) =>
+        v.toIntOption.filter(n => n >= 1 && n <= maxLimit) match
+          case Some(n) => f(n)
+          case None    => BadRequest(error(s"limit must be a number from 1 to $maxLimit"))
 
   private def analyzeAndStore(store: ResultStore, batch: MatchBatch): IO[Response[IO]] =
     for
