@@ -20,15 +20,18 @@ TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-180}"
 
 fail() { echo "FALLA: $*" >&2; exit 1; }
 
+# Prints exactly one number: 0 if the analyzer is not answering yet.
 count_matches() {
-  curl -fsS "$ANALYZER_URL/api/v1/matches?limit=1000" | grep -o '"matchId"' | wc -l | tr -d ' '
+  local body
+  body=$(curl -fsS "$ANALYZER_URL/api/v1/matches?limit=1000" 2>/dev/null) || { echo 0; return; }
+  { printf '%s' "$body" | grep -o '"matchId"' || true; } | wc -l | tr -d ' '
 }
 
 echo "Esperando $EXPECTED_MATCHES partidas en $ANALYZER_URL (máximo ${TIMEOUT_SECONDS}s)..."
 deadline=$((SECONDS + TIMEOUT_SECONDS))
 matches=0
 while :; do
-  matches=$(count_matches || echo 0)
+  matches=$(count_matches)
   [ "$matches" -ge "$EXPECTED_MATCHES" ] && break
   [ "$SECONDS" -ge "$deadline" ] && fail "solo hay $matches partidas analizadas, se esperaban $EXPECTED_MATCHES"
   sleep 3

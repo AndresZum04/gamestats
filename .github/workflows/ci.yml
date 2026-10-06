@@ -134,3 +134,34 @@ jobs:
       - name: Bajar todo
         if: always()
         run: docker compose --profile demo down -v
+
+  # Prueba el instalador como lo usaría el profesor: un clon recién hecho,
+  # una máquina con Docker y nada más. Solo Ubuntu: los runners de Windows
+  # de GitHub no corren contenedores Linux (ver docs/decisiones.md).
+  install-test:
+    name: Instalador en una máquina limpia (Ubuntu)
+    needs: [go, scala]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar
+        run: ./install.sh --yes
+
+      - name: Cargar un dataset copiando el archivo a la carpeta de eventos
+        run: |
+          cp data/samples/demo-small.jsonl gamestats-data/events/
+          EXPECTED_MATCHES=12 scripts/smoke-test.sh
+
+      - name: Simulador con semilla al azar (partidas nuevas)
+        run: |
+          docker compose --profile demo run --rm simulator
+          EXPECTED_MATCHES=28 scripts/smoke-test.sh
+
+      - name: Logs si algo falló
+        if: failure()
+        run: docker compose logs --no-color | tail -200
+
+      - name: Desinstalar
+        if: always()
+        run: ./uninstall.sh --yes --delete-data

@@ -119,3 +119,9 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | El job `integration` corre los contenedores con el uid del runner (`GAMESTATS_UID`) y usa `docker compose up --wait` | El runner de GitHub es Linux: sin el uid, los contenedores no podrían escribir en la carpeta de datos |
 | 2026-10-06 | El workflow se valida con `actionlint` y el script con `shellcheck` antes de subirlo | No hay repositorio remoto todavía; así se atrapan errores sin esperar a GitHub |
 | 2026-10-06 | El badge del README apunta a `github.com/AndresZum/gamestats` | Es la misma ruta que usan los módulos de Go; el repositorio debe llamarse así |
+| 2026-10-06 | El job `install-test` corre solo en `ubuntu-latest` | Los runners `windows-latest` de GitHub solo ejecutan contenedores Windows y las imágenes son Linux; `install.ps1` se probó a mano en Windows 11 con Docker Desktop |
+| 2026-10-06 | `install-test` primero copia `demo-small.jsonl` a la carpeta de eventos y después corre el simulador con semilla al azar | Prueba los dos caminos de entrada; con semilla 42 el simulador repetiría los `matchId` del dataset y se rechazarían como tardíos |
+| 2026-10-06 | Si los puertos los ocupa una instalación anterior de GameStats, el instalador la actualiza en vez de detenerse | Volver a correr el instalador debe ser seguro |
+| 2026-10-06 | El desinstalador usa `--rmi all` en vez de `--rmi local` | Las imágenes tienen nombre propio (`gamestats-*`) y `--rmi local` solo borra las que no lo tienen |
+| 2026-10-06 | El desinstalador con `--yes` conserva los datos; borrarlos sin preguntar requiere `--delete-data` | El plan pide preguntar antes de borrar; en modo no interactivo lo seguro es no borrar |
+| 2026-10-06 | `install.ps1` y `uninstall.ps1` se guardan en UTF-8 con BOM y CRLF, y escriben `.env` sin BOM | PowerShell 5.1 lee como ANSI los scripts sin BOM (rompe los acentos) y `Set-Content -Encoding utf8` agrega un BOM que confunde a compose |
