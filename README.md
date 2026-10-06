@@ -1,5 +1,7 @@
 # GameStats
 
+[![CI](https://github.com/AndresZum/gamestats/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresZum/gamestats/actions/workflows/ci.yml)
+
 GameStats recibe eventos de partidas de videojuegos, los organiza en Go y los analiza en Scala.
 Produce estadísticas por jugador, por partida y por juego, y detecta patrones de juego.
 

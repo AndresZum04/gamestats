@@ -115,3 +115,7 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | Los Dockerfiles de Go usan `GOWORK=off` | En la imagen solo se copia el módulo que se compila, no el `go.work` |
 | 2026-10-06 | El analyzer arranca con `-XX:MaxRAMPercentage=75 -XX:+UseSerialGC` | Respeta el límite de memoria del contenedor; importa en la VM pequeña de Azure (T21b) |
 | 2026-10-06 | El analyzer sale con código 143 ante SIGTERM | Es el código estándar de la JVM terminada por señal; no hay nada pendiente que guardar porque cada resultado se escribe al recibirlo |
+| 2026-10-06 | `smoke-test.sh` usa solo `bash` y `curl` (sin `jq`) y además compara los rechazos del ingestor con los que reportó el simulador | Corre igual en Linux, macOS y Git Bash; verifica la cadena completa y no solo que los servicios respondan |
+| 2026-10-06 | El job `integration` corre los contenedores con el uid del runner (`GAMESTATS_UID`) y usa `docker compose up --wait` | El runner de GitHub es Linux: sin el uid, los contenedores no podrían escribir en la carpeta de datos |
+| 2026-10-06 | El workflow se valida con `actionlint` y el script con `shellcheck` antes de subirlo | No hay repositorio remoto todavía; así se atrapan errores sin esperar a GitHub |
+| 2026-10-06 | El badge del README apunta a `github.com/AndresZum/gamestats` | Es la misma ruta que usan los módulos de Go; el repositorio debe llamarse así |
