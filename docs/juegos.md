@@ -25,7 +25,7 @@ Qué se captura:
 | `LAP_COMPLETED` | Tiempo de cada vuelta, posición al cerrarla y velocidad máxima |
 | `POSITION_CHANGED` | Cada cambio de posición con su causa (`OVERTAKE`, `OVERTAKEN`, `PIT`, `CRASH`) y el otro piloto involucrado |
 | `PIT_STOP` | Vuelta de la parada, duración y neumático |
-| `PENALTY` | Segundos de penalización y motivo |
+| `PENALTY` | Segundos de penalización y motivo. Se suman al tiempo total de la carrera, no al de la vuelta |
 | `CRASH` | Vuelta, gravedad y si hubo otro piloto |
 | `MATCH_FINISHED` | Posición final de cada piloto en `results` |
 

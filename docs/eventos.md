@@ -170,15 +170,15 @@ El `ingestor` aplica las reglas en este orden y se queda con el primer error. Ca
 | --- | --- |
 | `MALFORMED_JSON` | La línea o el cuerpo no es JSON válido |
 | `MISSING_FIELD` | Falta un campo obligatorio del sobre o viene vacío |
-| `INVALID_FIELD` | `eventId` no es UUID, `timestamp` no se puede leer o está más de 5 minutos en el futuro, `seq` es menor a 1, `schemaVersion` no está soportada |
+| `INVALID_FIELD` | `eventId` no es UUID, `timestamp` no se puede leer o está más de 5 minutos en el futuro, `seq` es menor a 1, `schemaVersion` no está soportada, `matchId` tiene caracteres no permitidos, un campo del sobre tiene el tipo JSON equivocado (por ejemplo `seq: "14"`), o el `matchId` ya pertenece a otro juego |
 | `UNKNOWN_GAME` | `gameId` o `gameVersion` no están registrados |
 | `UNKNOWN_TYPE` | `type` no está permitido para ese juego |
 | `MISSING_PLAYER` | El tipo exige `playerId` y no viene |
 | `MISSING_DATA_FIELD` | Falta una clave obligatoria de `data` o tiene el tipo JSON equivocado |
 | `DUPLICATE_EVENT` | Ya se aceptó un evento con ese `eventId` |
-| `LATE_EVENT` | Llega después de que la partida ya se envió a Scala |
+| `LATE_EVENT` | Llega después de que la partida se cerró, o su `seq` es mayor que el de `MATCH_FINISHED` |
 
-Un evento de jugador que llega antes de `MATCH_STARTED` se acepta. El desorden se resuelve ordenando por `seq` antes de enviar la partida a Scala.
+Un evento de jugador que llega antes de `MATCH_STARTED` se acepta. El desorden se resuelve ordenando por `seq` antes de enviar la partida a Scala. Si `MATCH_FINISHED` llega antes que otros eventos de la partida, el ingestor espera hasta tener todos los `seq` del 1 al del fin, o hasta 5 segundos (`MATCH_FINISH_GRACE`), antes de cerrarla.
 
 ## Cómo agregar un juego nuevo
 
