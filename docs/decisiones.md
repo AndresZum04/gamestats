@@ -77,3 +77,8 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | `GET /api/v1/matches/{matchId}` se implementa en T11; los demás GET en T16 | El criterio de T11 lo usa para comprobar que los resultados sobreviven a un reinicio |
 | 2026-10-06 | Los logs del analyzer usan slf4j directo y un middleware propio | Evita agregar log4cats; logback ya trae slf4j |
 | 2026-10-06 | Las pruebas de rutas corren el `IO` con `unsafeRunSync` en vez de agregar munit-cats-effect | El plan solo lista munit como dependencia de pruebas |
+| 2026-10-06 | G1 y G2 leen los `Event` crudos; G3, G5 y G6 leen los `CommonEvent` tipados | Contar tipos y medir tiempos no necesita tipos; para leer `awayMs` o `delta` el `match` sobre el evento tipado garantiza que el campo existe |
+| 2026-10-06 | G4 (tasa de abandono) se guarda por partida como la métrica `left` de cada jugador y `playersLeft` de la partida; la tasa se calcula en T16 sobre todas las partidas | Es una cifra por juego, no por partida |
+| 2026-10-06 | Todo jugador recibe `disconnections`, `awayMs` y `left` (en cero si no aplica); G5 y G6 solo aparecen si el jugador tuvo eventos de puntaje o de turno | El contrato muestra los dos primeros siempre; el plan dice que G6 se omite si no hay turnos |
+| 2026-10-06 | La composición `buildContext andThen computeStats andThen attachPatterns` vive una sola vez en `ComposedAnalyzer[E]`; cada juego solo aporta conversión, métricas y detectores | Evita repetir el armado en cada analizador y deja claro qué es propio de cada juego |
+| 2026-10-06 | Los jugadores del resultado se ordenan por `placement` y luego por id | Lectura natural en la API y el tablero |

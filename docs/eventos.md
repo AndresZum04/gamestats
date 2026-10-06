@@ -186,7 +186,31 @@ Un evento de jugador que llega antes de `MATCH_STARTED` se acepta. El desorden s
 2. Crear la carpeta `data/events/<gameId>/` y empezar a escribir partidas ahí.
 3. Reiniciar el `ingestor` para que cargue la configuración.
 
-Con eso el juego ya se valida, se agrupa por partida y recibe las estadísticas generales (G1 a G6). No hay que tocar código de Go. Si además se quieren métricas y patrones propios, se agrega un analizador en Scala. Ese paso se documenta cuando exista el registro de analizadores (tarea T12).
+Con eso el juego ya se valida, se agrupa por partida y recibe las estadísticas generales (G1 a G6). No hay que tocar código de Go.
+
+### Métricas y patrones propios (opcional)
+
+Si el juego necesita estadísticas propias, se agrega un analizador en Scala. Son dos pasos:
+
+1. Crear un objeto que extienda `ComposedAnalyzer[E]` en `analyzer/src/main/scala/gamestats/analysis/<juego>/`. `E` es el tipo de los eventos del juego. El objeto define cuatro cosas, todas funciones puras:
+   - `gameId`: el mismo de la configuración.
+   - `toTyped`: cómo convertir un `Event` a `E`. Devuelve `None` para lo que no le interesa.
+   - `playerMetrics` y `matchMetrics`: las métricas propias, por jugador y por partida.
+   - `detectors`: la lista de detectores de patrones, cada uno de tipo `MatchContext[E] => List[PatternMatch]`.
+2. Agregar el objeto a la lista de `AnalyzerRegistry.all` en `analysis/GameAnalyzer.scala`.
+
+Las estadísticas generales se siguen calculando solas: `ComposedAnalyzer` arma el análisis como `buildContext andThen computeStats andThen attachPatterns` y les suma las métricas del juego. Un juego sin analizador propio no es un error: recibe `GenericAnalyzer`, que calcula G1 a G6.
+
+```scala
+object CardDuelAnalyzer extends ComposedAnalyzer[Event]:
+  val gameId = "card-duel"
+  protected def toTyped(e: Event, start: Instant): Option[Event] =
+    Option.when(e.eventType == "CARD_PLAYED")(e)
+  override protected def matchMetrics(ctx: MatchContext[Event]): Map[String, Json] =
+    Map("cardsPlayed" -> Json.fromInt(ctx.events.size))
+```
+
+Este ejemplo está en las pruebas (`GenericStatsSuite`).
 
 ## Versiones del formato
 
