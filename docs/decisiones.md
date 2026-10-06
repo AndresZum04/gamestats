@@ -70,3 +70,10 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | Scala escribe las fechas con milisegundos (`2026-09-10T14:03:22.120Z`), igual que Go | El `Encoder[Instant]` por defecto de circe omite los milisegundos cuando son cero |
 | 2026-10-06 | Los tipos de los agregados entre partidas se definen en T16 y no en T10 | Se crean junto con las funciones que los usan |
 | 2026-10-06 | El analyzer se compila y prueba con la imagen `sbtscala/scala-sbt` (Temurin 21) | sbt no está instalado en Windows; es la misma imagen que usará el Dockerfile de T19 |
+| 2026-10-06 | `GameAnalyzer`, `AnalyzerRegistry` y un `GenericAnalyzer` con G1 y G2 se crean en T11; T12 los completa | El POST necesita un análisis desde T11; así no se escribe código provisional que después se bota |
+| 2026-10-06 | `analyze` pone `analyzedAt = sentAt` del lote y la ruta lo reemplaza por la hora real | El análisis sigue siendo puro y determinista; el reloj es un efecto y vive en la capa HTTP |
+| 2026-10-06 | El POST responde 400 si `matchId` no cumple el patrón del esquema | El analyzer acepta POST de cualquiera y `matchId` se usa como nombre de archivo; evita escribir fuera de `results/` |
+| 2026-10-06 | `RESULTS_DIR` toma por defecto `../data/results` (no `/data/results`) | Igual que el ingestor con `../data`: funciona al correr con sbt desde `analyzer/`; docker compose define `/data/results` |
+| 2026-10-06 | `GET /api/v1/matches/{matchId}` se implementa en T11; los demás GET en T16 | El criterio de T11 lo usa para comprobar que los resultados sobreviven a un reinicio |
+| 2026-10-06 | Los logs del analyzer usan slf4j directo y un middleware propio | Evita agregar log4cats; logback ya trae slf4j |
+| 2026-10-06 | Las pruebas de rutas corren el `IO` con `unsafeRunSync` en vez de agregar munit-cats-effect | El plan solo lista munit como dependencia de pruebas |
