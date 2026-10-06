@@ -120,9 +120,9 @@ object AnalyzerRegistry:
     analyzers.map(a => a.gameId -> a).toMap
 
   /** Games with their own analyzer. Adding a game = one object extending ComposedAnalyzer plus one
-    * entry here. RacingAnalyzer and ArenaAnalyzer are added in T13 and T14.
+    * entry here. ArenaAnalyzer is added in T14.
     */
-  val all: Map[String, GameAnalyzer] = from(Nil)
+  val all: Map[String, GameAnalyzer] = from(List(racing.RacingAnalyzer))
 
   /** A game without its own analyzer is not an error: it gets the generic statistics.
     */
