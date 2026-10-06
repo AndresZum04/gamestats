@@ -88,3 +88,7 @@ Decisiones tomadas durante la implementación que no estaban cubiertas por el pl
 | 2026-10-06 | R6: si una vuelta tiene choque y penalización, su diferencia contra las vueltas limpias se cuenta una sola vez; las vueltas con choque, penalización o pits no son limpias; sin vueltas limpias la diferencia es 0 | El plan no cubría esos casos |
 | 2026-10-06 | R7: la vuelta de la parada no entra ni en las 3 anteriores ni en las 3 posteriores; con varias paradas se promedia; sin vueltas a algún lado no se reporta | La vuelta de la parada incluye el tiempo en pits y deformaría la comparación |
 | 2026-10-06 | `pitEffectMs` y `positionsGained` solo aparecen cuando se pueden calcular; `overtakes` e `incidentImpactMs` aparecen siempre (0 por defecto) | Un cero inventado en R3 o R7 se confundiría con un dato real |
+| 2026-10-06 | Cada partida de combate guarda `killsByWeapon` en sus métricas; A6 (arma más efectiva) se calcula en T16 sumándolas | A6 es una cifra por juego y el resultado guardado no incluye los eventos |
+| 2026-10-06 | El marcador de A3 se cuenta desde las eliminaciones (existe también en lotes `PARTIAL`); `winnerTeam` solo sale de `MATCH_FINISHED` | Una partida parcial no tiene ganador conocido |
+| 2026-10-06 | MVP: en empate gana el primer `playerId` en orden alfabético | Resultado determinista; el plan no cubría empates |
+| 2026-10-06 | `avgDamagePerHit`, `headshotPct`, `longestKillM`, `damagePerKill` y `weaponConversionPct` solo aparecen cuando hay datos para calcularlos | Mismo criterio que en carreras: no inventar ceros |
