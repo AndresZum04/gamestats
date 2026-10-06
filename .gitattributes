@@ -1,0 +1,3 @@
+# Finales de línea LF en el repo, para que los scripts corran en contenedores Linux
+* text=auto eol=lf
+*.ps1 text eol=crlf

@@ -1,0 +1,33 @@
+# Go
+/ingestor/ingestor
+/simulator/simulator
+*.exe
+*.test
+*.out
+coverage.*
+
+# Scala / sbt
+target/
+.bsp/
+.bloop/
+.metals/
+project/project/
+metals.sbt
+
+# Editores
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Datos en tiempo de ejecución: solo se versionan los datasets de ejemplo
+/data/*
+!/data/samples/
+/gamestats-data/
+/ci-artifacts/
+ci-artifacts.tar.gz
+
+# Configuración local y secretos
+.env
+*.pem
+*.key
