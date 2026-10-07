@@ -15,8 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
-	"github.com/AndresZum/gamestats/ingestor/internal/state"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/state"
 )
 
 // Config tunes the sender.

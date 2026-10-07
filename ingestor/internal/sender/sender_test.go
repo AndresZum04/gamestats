@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
-	"github.com/AndresZum/gamestats/ingestor/internal/state"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/state"
 )
 
 // fakeAnalyzer answers each POST with the next status of script, then

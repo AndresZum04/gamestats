@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/state"
-	"github.com/AndresZum/gamestats/ingestor/internal/validation"
+	"github.com/AndresZum04/gamestats/ingestor/internal/state"
+	"github.com/AndresZum04/gamestats/ingestor/internal/validation"
 )
 
 const (

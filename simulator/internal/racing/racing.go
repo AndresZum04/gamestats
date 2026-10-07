@@ -5,7 +5,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/AndresZum/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
 )
 
 // GameID of the racing game.

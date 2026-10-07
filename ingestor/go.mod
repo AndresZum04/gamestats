@@ -1,4 +1,4 @@
-module github.com/AndresZum/gamestats/ingestor
+module github.com/AndresZum04/gamestats/ingestor
 
 go 1.22
 

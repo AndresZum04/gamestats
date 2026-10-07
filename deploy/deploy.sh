@@ -7,7 +7,7 @@
 #
 # Variables opcionales:
 #   GHCR_USER, GHCR_PAT   credenciales si los paquetes de GHCR son privados
-#   IMAGE_PREFIX          por defecto ghcr.io/andreszum/gamestats
+#   IMAGE_PREFIX          por defecto ghcr.io/andreszum04/gamestats
 #   SKIP_PULL=1           usa imágenes que ya estén en la máquina (pruebas)
 set -euo pipefail
 cd "$(dirname "$0")"

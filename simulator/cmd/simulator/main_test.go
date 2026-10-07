@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AndresZum/gamestats/simulator/internal/inject"
-	"github.com/AndresZum/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/inject"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
 )
 
 func fileOptions(out string) options {

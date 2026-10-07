@@ -1,6 +1,6 @@
 # GameStats
 
-[![CI](https://github.com/AndresZum/gamestats/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresZum/gamestats/actions/workflows/ci.yml)
+[![CI](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml)
 
 GameStats recibe eventos de partidas de videojuegos, los organiza en Go y los analiza en Scala. Calcula estadísticas por jugador, por partida y por juego, detecta patrones como remontadas, rachas o venganzas, y muestra todo en un tablero web.
 
@@ -33,7 +33,7 @@ Para desarrollar sin Docker: Go 1.22, Java 21 y sbt 1.10.
 ## Inicio rápido
 
 ```bash
-git clone https://github.com/AndresZum/gamestats.git
+git clone https://github.com/AndresZum04/gamestats.git
 cd gamestats
 ./install.sh                                              # Linux y macOS
 powershell -ExecutionPolicy Bypass -File .\install.ps1    # Windows

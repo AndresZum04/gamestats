@@ -1,4 +1,4 @@
-module github.com/AndresZum/gamestats/simulator
+module github.com/AndresZum04/gamestats/simulator
 
 go 1.22
 

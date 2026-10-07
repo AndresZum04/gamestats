@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AndresZum/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
 )
 
 // small builds a 3-event match lasting 60 s of game time.

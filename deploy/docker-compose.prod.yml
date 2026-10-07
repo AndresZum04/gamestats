@@ -11,7 +11,7 @@ x-user: &user "${GAMESTATS_UID:-10001}:${GAMESTATS_GID:-10001}"
 
 services:
   analyzer:
-    image: ${IMAGE_PREFIX:-ghcr.io/andreszum/gamestats}-analyzer:${TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/andreszum04/gamestats}-analyzer:${TAG:-latest}
     restart: unless-stopped
     user: *user
     mem_limit: 512m
@@ -25,7 +25,7 @@ services:
       start_period: 30s
 
   ingestor:
-    image: ${IMAGE_PREFIX:-ghcr.io/andreszum/gamestats}-ingestor:${TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/andreszum04/gamestats}-ingestor:${TAG:-latest}
     restart: unless-stopped
     user: *user
     mem_limit: 128m
@@ -42,7 +42,7 @@ services:
       retries: 20
 
   simulator:
-    image: ${IMAGE_PREFIX:-ghcr.io/andreszum/gamestats}-simulator:${TAG:-latest}
+    image: ${IMAGE_PREFIX:-ghcr.io/andreszum04/gamestats}-simulator:${TAG:-latest}
     user: *user
     mem_limit: 128m
     profiles: ["demo"]

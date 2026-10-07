@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
-	"github.com/AndresZum/gamestats/ingestor/internal/validation"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/validation"
 )
 
 // Intake is the single entry point shared by the file tailers and the HTTP

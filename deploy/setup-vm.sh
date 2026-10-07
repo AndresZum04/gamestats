@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prepara una VM Ubuntu nueva para GameStats. Se corre una sola vez:
-#   curl -fsSL https://raw.githubusercontent.com/AndresZum/gamestats/main/deploy/setup-vm.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/AndresZum04/gamestats/main/deploy/setup-vm.sh | bash
 # o copiando este archivo a la VM y corriendo: bash setup-vm.sh
 set -euo pipefail
 

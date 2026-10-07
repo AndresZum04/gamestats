@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
 )
 
 // MatchStatus is the lifecycle of a match inside the ingestor.

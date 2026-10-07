@@ -56,7 +56,7 @@ Si la VM ya existe, los puertos 8080 y 8081 se abren en "Redes" → "Reglas de p
 
 ```bash
 ssh -i ~/.ssh/gamestats_azure azureuser@IP_DE_LA_VM
-curl -fsSL https://raw.githubusercontent.com/AndresZum/gamestats/main/deploy/setup-vm.sh | bash
+curl -fsSL https://raw.githubusercontent.com/AndresZum04/gamestats/main/deploy/setup-vm.sh | bash
 exit
 ```
 
@@ -98,7 +98,7 @@ go run ./cmd/simulator --mode http --target http://IP_DE_LA_VM:8080 --seed 0
 Sin Go instalado, con Docker:
 
 ```bash
-docker run --rm ghcr.io/andreszum/gamestats-simulator:latest --mode http --target http://IP_DE_LA_VM:8080 --seed 0
+docker run --rm ghcr.io/andreszum04/gamestats-simulator:latest --mode http --target http://IP_DE_LA_VM:8080 --seed 0
 ```
 
 ## Volver a una versión anterior

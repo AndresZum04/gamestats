@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/AndresZum/gamestats/schemas/event.schema.json",
+  "$id": "https://github.com/AndresZum04/gamestats/schemas/event.schema.json",
   "title": "GameStats event envelope",
   "description": "Common envelope shared by every event, schemaVersion 1.0. Game-specific keys live in data and are checked against configs/games/*.json.",
   "type": "object",

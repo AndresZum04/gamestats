@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AndresZum/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
 )
 
 // FileGap separates the start of consecutive matches in file mode.

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
 )
 
 var base = time.Date(2026, 9, 10, 14, 0, 0, 0, time.UTC)

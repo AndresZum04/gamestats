@@ -7,7 +7,7 @@ package inject
 import (
 	"time"
 
-	"github.com/AndresZum/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
 )
 
 // Counts tells how many problems were injected, by kind.

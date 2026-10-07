@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/ingest"
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
-	"github.com/AndresZum/gamestats/ingestor/internal/sender"
-	"github.com/AndresZum/gamestats/ingestor/internal/state"
-	"github.com/AndresZum/gamestats/ingestor/internal/validation"
+	"github.com/AndresZum04/gamestats/ingestor/internal/ingest"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/sender"
+	"github.com/AndresZum04/gamestats/ingestor/internal/state"
+	"github.com/AndresZum04/gamestats/ingestor/internal/validation"
 )
 
 const valid = `{"schemaVersion":"1.0","eventId":"0b7d3e11-55aa-4f2c-9d10-7a8b6c5d4e33","timestamp":"2026-09-10T14:01:32.410Z","gameId":"racing-pro","gameVersion":"1.0","matchId":"rp-0007","seq":14,"playerId":"p-ana","type":"LAP_COMPLETED","data":{"lap":1,"lapTimeMs":92410,"position":7,"topSpeedKmh":318.4}}`

@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/ingest"
-	"github.com/AndresZum/gamestats/ingestor/internal/sender"
-	"github.com/AndresZum/gamestats/ingestor/internal/state"
+	"github.com/AndresZum04/gamestats/ingestor/internal/ingest"
+	"github.com/AndresZum04/gamestats/ingestor/internal/sender"
+	"github.com/AndresZum04/gamestats/ingestor/internal/state"
 )
 
 // Server holds what the endpoints read. None of them modifies state,

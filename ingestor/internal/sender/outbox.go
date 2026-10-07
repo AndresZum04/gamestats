@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
 )
 
 // Outbox keeps batches that could not be delivered, one JSON file per

@@ -149,7 +149,7 @@ Qué decir:
 Desde la computadora local, mandar eventos a la VM por HTTP y mostrar el tablero remoto llenándose:
 
 ```bash
-docker run --rm ghcr.io/andreszum/gamestats-simulator:latest --mode http --target http://IP_DE_LA_VM:8080 --seed 0
+docker run --rm ghcr.io/andreszum04/gamestats-simulator:latest --mode http --target http://IP_DE_LA_VM:8080 --seed 0
 ```
 
 Abrir `http://IP_DE_LA_VM:8081/dashboard`.

@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AndresZum/gamestats/simulator/internal/arena"
-	"github.com/AndresZum/gamestats/simulator/internal/match"
-	"github.com/AndresZum/gamestats/simulator/internal/racing"
+	"github.com/AndresZum04/gamestats/simulator/internal/arena"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/racing"
 )
 
 // Scenario is a named builder.

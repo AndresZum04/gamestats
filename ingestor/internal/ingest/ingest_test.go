@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
-	"github.com/AndresZum/gamestats/ingestor/internal/validation"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/validation"
 )
 
 const (

@@ -14,14 +14,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/AndresZum/gamestats/ingestor/internal/api"
-	"github.com/AndresZum/gamestats/ingestor/internal/config"
-	"github.com/AndresZum/gamestats/ingestor/internal/ingest"
-	"github.com/AndresZum/gamestats/ingestor/internal/model"
-	"github.com/AndresZum/gamestats/ingestor/internal/pipeline"
-	"github.com/AndresZum/gamestats/ingestor/internal/sender"
-	"github.com/AndresZum/gamestats/ingestor/internal/state"
-	"github.com/AndresZum/gamestats/ingestor/internal/validation"
+	"github.com/AndresZum04/gamestats/ingestor/internal/api"
+	"github.com/AndresZum04/gamestats/ingestor/internal/config"
+	"github.com/AndresZum04/gamestats/ingestor/internal/ingest"
+	"github.com/AndresZum04/gamestats/ingestor/internal/model"
+	"github.com/AndresZum04/gamestats/ingestor/internal/pipeline"
+	"github.com/AndresZum04/gamestats/ingestor/internal/sender"
+	"github.com/AndresZum04/gamestats/ingestor/internal/state"
+	"github.com/AndresZum04/gamestats/ingestor/internal/validation"
 )
 
 const (

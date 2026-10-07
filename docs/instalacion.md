@@ -16,7 +16,7 @@ GameStats se instala en cualquier computadora que tenga Docker. No hace falta in
 Primero se clona el repositorio:
 
 ```bash
-git clone https://github.com/AndresZum/gamestats.git
+git clone https://github.com/AndresZum04/gamestats.git
 cd gamestats
 ```
 

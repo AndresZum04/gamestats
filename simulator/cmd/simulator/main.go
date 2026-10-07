@@ -17,13 +17,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/AndresZum/gamestats/simulator/internal/arena"
-	"github.com/AndresZum/gamestats/simulator/internal/chess"
-	"github.com/AndresZum/gamestats/simulator/internal/emit"
-	"github.com/AndresZum/gamestats/simulator/internal/inject"
-	"github.com/AndresZum/gamestats/simulator/internal/match"
-	"github.com/AndresZum/gamestats/simulator/internal/racing"
-	"github.com/AndresZum/gamestats/simulator/internal/scenario"
+	"github.com/AndresZum04/gamestats/simulator/internal/arena"
+	"github.com/AndresZum04/gamestats/simulator/internal/chess"
+	"github.com/AndresZum04/gamestats/simulator/internal/emit"
+	"github.com/AndresZum04/gamestats/simulator/internal/inject"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/racing"
+	"github.com/AndresZum04/gamestats/simulator/internal/scenario"
 )
 
 // fileBase is the start of the first match in file mode. It is in the

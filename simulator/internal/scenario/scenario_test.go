@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AndresZum/gamestats/simulator/internal/match"
+	"github.com/AndresZum04/gamestats/simulator/internal/match"
 )
 
 // These tests check the claims written above each scenario, so a change
