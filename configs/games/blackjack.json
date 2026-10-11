@@ -1,0 +1,38 @@
+{
+  "gameId": "blackjack",
+  "versions": ["1.0"],
+  "events": {
+    "ROUND_STARTED": {
+      "playerRequired": false,
+      "data": { "round": "number" }
+    },
+    "BET_PLACED": {
+      "playerRequired": true,
+      "data": { "round": "number", "amount": "number", "chipsBefore": "number" }
+    },
+    "CARD_DEALT": {
+      "playerRequired": true,
+      "data": { "round": "number", "card": "string", "handValue": "number" }
+    },
+    "DEALER_CARD": {
+      "playerRequired": false,
+      "data": { "round": "number", "card": "string", "hidden": "boolean", "dealerValue": "number" }
+    },
+    "DECISION": {
+      "playerRequired": true,
+      "data": { "round": "number", "handValue": "number" }
+    },
+    "BUST": {
+      "playerRequired": true,
+      "data": { "round": "number", "handValue": "number" }
+    },
+    "BLACKJACK": {
+      "playerRequired": true,
+      "data": { "round": "number" }
+    },
+    "HAND_RESULT": {
+      "playerRequired": true,
+      "data": { "round": "number", "result": "string", "payout": "number", "chips": "number" }
+    }
+  }
+}

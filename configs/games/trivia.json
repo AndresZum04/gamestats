@@ -1,0 +1,22 @@
+{
+  "gameId": "trivia",
+  "versions": ["1.0"],
+  "events": {
+    "QUESTION_SHOWN": {
+      "playerRequired": false,
+      "data": { "questionId": "string", "number": "number", "category": "string", "difficulty": "string", "timeLimitMs": "number" }
+    },
+    "ANSWER_SUBMITTED": {
+      "playerRequired": true,
+      "data": { "questionId": "string", "option": "string", "correct": "boolean", "responseMs": "number" }
+    },
+    "ANSWER_TIMEOUT": {
+      "playerRequired": true,
+      "data": { "questionId": "string" }
+    },
+    "QUESTION_CLOSED": {
+      "playerRequired": false,
+      "data": { "questionId": "string", "correctOption": "string", "correctCount": "number" }
+    }
+  }
+}
