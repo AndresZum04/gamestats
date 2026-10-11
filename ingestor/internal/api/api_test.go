@@ -16,7 +16,7 @@ import (
 	"github.com/AndresZum04/gamestats/ingestor/internal/validation"
 )
 
-const valid = `{"schemaVersion":"1.0","eventId":"0b7d3e11-55aa-4f2c-9d10-7a8b6c5d4e33","timestamp":"2026-09-10T14:01:32.410Z","gameId":"racing-pro","gameVersion":"1.0","matchId":"rp-0007","seq":14,"playerId":"p-ana","type":"LAP_COMPLETED","data":{"lap":1,"lapTimeMs":92410,"position":7,"topSpeedKmh":318.4}}`
+const valid = `{"schemaVersion":"1.0","eventId":"0b7d3e11-55aa-4f2c-9d10-7a8b6c5d4e33","timestamp":"2026-09-10T14:01:32.410Z","gameId":"snake","gameVersion":"1.0","matchId":"sn-0007","seq":14,"playerId":"p-kev","type":"FOOD_EATEN","data":{"foodType":"APPLE","length":5,"points":10}}`
 
 func newServer(t *testing.T) (*Server, http.Handler) {
 	t.Helper()
@@ -53,7 +53,7 @@ func do(t *testing.T, h http.Handler, method, path, body string) *httptest.Respo
 
 func TestStatsCountsEventsAndRejections(t *testing.T) {
 	_, h := newServer(t)
-	unknown := strings.Replace(valid, "racing-pro", "tetris", 1)
+	unknown := strings.Replace(valid, `"snake"`, `"tetris"`, 1)
 	do(t, h, http.MethodPost, "/api/v1/events", "["+valid+","+valid+","+unknown+"]")
 
 	rec := do(t, h, http.MethodGet, "/api/v1/stats", "")
@@ -95,7 +95,7 @@ func TestRejectedEndpoint(t *testing.T) {
 func TestMatchEndpoints(t *testing.T) {
 	s, h := newServer(t)
 	s.Registry.Put(state.Snapshot{
-		MatchID: "rp-1", GameID: "racing-pro", State: state.StatusOpen, EventCount: 4, ActivePlayers: 1,
+		MatchID: "sn-1", GameID: "snake", State: state.StatusOpen, EventCount: 4, ActivePlayers: 1,
 		Players: map[string]state.PlayerStatus{"p-ana": state.PlayerActive, "p-luis": state.PlayerLeft},
 	})
 
@@ -105,7 +105,7 @@ func TestMatchEndpoints(t *testing.T) {
 		t.Fatalf("list = %+v", list)
 	}
 	var d MatchDetail
-	_ = json.Unmarshal(do(t, h, http.MethodGet, "/api/v1/matches/rp-1", "").Body.Bytes(), &d)
+	_ = json.Unmarshal(do(t, h, http.MethodGet, "/api/v1/matches/sn-1", "").Body.Bytes(), &d)
 	if len(d.ConnectedPlayers) != 1 || d.LeftPlayers[0] != "p-luis" {
 		t.Fatalf("detail = %+v", d)
 	}

@@ -90,19 +90,19 @@ func TestValidateAcceptsOneSamplePerType(t *testing.T) {
 	}
 }
 
-// baseEvent is a valid LAP_COMPLETED that each case modifies.
+// baseEvent is a valid snake FOOD_EATEN that each case modifies.
 func baseEvent() map[string]any {
 	return map[string]any{
 		"schemaVersion": "1.0",
 		"eventId":       "0b7d3e11-55aa-4f2c-9d10-7a8b6c5d4e33",
 		"timestamp":     "2026-09-10T14:01:32.410Z",
-		"gameId":        "racing-pro",
+		"gameId":        "snake",
 		"gameVersion":   "1.0",
-		"matchId":       "rp-0007",
+		"matchId":       "sn-0003",
 		"seq":           14,
 		"playerId":      "p-ana",
-		"type":          "LAP_COMPLETED",
-		"data":          map[string]any{"lap": 1, "lapTimeMs": 92410, "position": 7, "topSpeedKmh": 318.4},
+		"type":          "FOOD_EATEN",
+		"data":          map[string]any{"foodType": "APPLE", "length": 4, "points": 10},
 	}
 }
 
@@ -135,7 +135,7 @@ func TestValidateRejections(t *testing.T) {
 		{"empty line", ``, CodeMalformedJSON},
 		{"array instead of object", `[1,2,3]`, CodeMalformedJSON},
 		{"JSON null", `null`, CodeMalformedJSON},
-		{"string instead of object", `"LAP_COMPLETED"`, CodeMalformedJSON},
+		{"string instead of object", `"FOOD_EATEN"`, CodeMalformedJSON},
 		{"two objects on one line", `{} {}`, CodeMalformedJSON},
 	}
 	for _, tc := range rawCases {
@@ -179,16 +179,16 @@ func TestValidateRejections(t *testing.T) {
 		{"unknown gameVersion", set("gameVersion", "9.9"), CodeUnknownGame},
 
 		{"unknown type", set("type", "BOOST_USED"), CodeUnknownType},
-		{"type from another game", set("type", "PLAYER_ELIMINATED"), CodeUnknownType},
+		{"type from another game", set("type", "BET_PLACED"), CodeUnknownType},
 
 		{"null playerId", set("playerId", nil), CodeMissingPlayer},
 		{"no playerId", del("playerId"), CodeMissingPlayer},
 		{"empty playerId", set("playerId", ""), CodeMissingPlayer},
 
-		{"missing data key", delData("lap"), CodeMissingDataField},
-		{"null data key", setData("lapTimeMs", nil), CodeMissingDataField},
-		{"string instead of number", setData("position", "7"), CodeMissingDataField},
-		{"boolean instead of number", setData("topSpeedKmh", true), CodeMissingDataField},
+		{"missing data key", delData("length"), CodeMissingDataField},
+		{"null data key", setData("points", nil), CodeMissingDataField},
+		{"string instead of number", setData("length", "4"), CodeMissingDataField},
+		{"boolean instead of string", setData("foodType", true), CodeMissingDataField},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -259,7 +259,7 @@ func TestValidateTolerances(t *testing.T) {
 		ev := baseEvent()
 		delete(ev, "playerId")
 		ev["type"] = "MATCH_STARTED"
-		ev["data"] = map[string]any{"players": []any{"p-ana"}, "mode": "GRAND_PRIX"}
+		ev["data"] = map[string]any{"players": []any{"p-ana"}, "mode": "CLASSIC"}
 		raw, _ := json.Marshal(ev)
 		got, verr := v.Validate(raw)
 		if verr != nil {
@@ -274,14 +274,14 @@ func TestValidateTolerances(t *testing.T) {
 func TestValidateKeepsNumbersExact(t *testing.T) {
 	v := newTestValidator(t, configDir)
 	ev := baseEvent()
-	ev["data"].(map[string]any)["lapTimeMs"] = json.Number("9007199254740993") // > 2^53
+	ev["data"].(map[string]any)["points"] = json.Number("9007199254740993") // > 2^53
 	raw, _ := json.Marshal(ev)
 	got, verr := v.Validate(raw)
 	if verr != nil {
 		t.Fatal(verr)
 	}
 	out, _ := json.Marshal(got.Data)
-	if !strings.Contains(string(out), `"lapTimeMs":9007199254740993`) {
+	if !strings.Contains(string(out), `"points":9007199254740993`) {
 		t.Errorf("number changed: %s", out)
 	}
 	if got.Time != time.Date(2026, 9, 10, 14, 1, 32, 410e6, time.UTC) {

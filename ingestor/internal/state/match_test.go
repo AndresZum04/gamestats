@@ -11,7 +11,7 @@ var base = time.Date(2026, 9, 10, 14, 0, 0, 0, time.UTC)
 
 func ev(seq int, typ string, player string, data map[string]any) model.Event {
 	e := model.Event{
-		MatchID: "rp-1", GameID: "racing-pro", GameVersion: "1.0",
+		MatchID: "sn-1", GameID: "snake", GameVersion: "1.0",
 		Seq: seq, Type: typ, Data: data,
 		Time: base.Add(time.Duration(seq) * time.Second),
 	}
@@ -29,7 +29,7 @@ func TestApplyTracksPlayers(t *testing.T) {
 	m.Apply(ev(5, "PLAYER_LEFT", "p-luis", map[string]any{"reason": "QUIT"}), now)
 	m.Apply(ev(1, "MATCH_STARTED", "", map[string]any{"players": []any{"p-ana", "p-luis", "p-sofi"}}), now)
 	m.Apply(ev(2, "PLAYER_DISCONNECTED", "p-sofi", nil), now)
-	m.Apply(ev(3, "LAP_COMPLETED", "p-nuevo", nil), now)
+	m.Apply(ev(3, "FOOD_EATEN", "p-nuevo", nil), now)
 
 	want := map[string]PlayerStatus{
 		"p-ana": PlayerActive, "p-luis": PlayerLeft, "p-sofi": PlayerDisconnected, "p-nuevo": PlayerActive,
@@ -57,7 +57,7 @@ func TestCompleteNeedsEverySeq(t *testing.T) {
 	if m.Complete() {
 		t.Fatal("seq 2 is missing, match must not be complete")
 	}
-	m.Apply(ev(2, "LAP_COMPLETED", "p-ana", nil), now)
+	m.Apply(ev(2, "FOOD_EATEN", "p-ana", nil), now)
 	if !m.Complete() || m.State != StatusFinished {
 		t.Fatalf("complete=%v state=%s", m.Complete(), m.State)
 	}
@@ -67,7 +67,7 @@ func TestBatchSortsAndFillsTimes(t *testing.T) {
 	m := NewMatchState(ev(1, "MATCH_STARTED", "", nil))
 	now := time.Now()
 	for _, seq := range []int{4, 2, 5, 3} {
-		m.Apply(ev(seq, "LAP_COMPLETED", "p-ana", nil), now)
+		m.Apply(ev(seq, "FOOD_EATEN", "p-ana", nil), now)
 	}
 
 	// No MATCH_STARTED and PARTIAL: start is the earliest event, no end.

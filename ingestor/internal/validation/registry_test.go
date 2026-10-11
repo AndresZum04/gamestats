@@ -12,21 +12,32 @@ func TestLoadRegistryRealConfigs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(reg.GameIDs(), ","); got != "arena-clash,chess-lite,racing-pro" {
+	if got := strings.Join(reg.GameIDs(), ","); got != "blackjack,snake,trivia" {
 		t.Fatalf("games = %s", got)
 	}
-	racing, _ := reg.Game("racing-pro")
-	if n := len(racing.EventTypes()); n != 15 { // 10 common + 5 own
-		t.Errorf("racing-pro has %d types, want 15", n)
+	// Each game has the 10 common types plus its own.
+	for game, own := range map[string]int{"trivia": 4, "snake": 5, "blackjack": 8} {
+		g, _ := reg.Game(game)
+		if n := len(g.EventTypes()); n != 10+own {
+			t.Errorf("%s has %d types, want %d", game, n, 10+own)
+		}
 	}
-	if r, _ := racing.Rule("MATCH_STARTED"); r.PlayerRequired {
+	blackjack, _ := reg.Game("blackjack")
+	if r, _ := blackjack.Rule("DEALER_CARD"); r.PlayerRequired {
+		t.Error("DEALER_CARD belongs to the house: it must not require playerId")
+	}
+	if r, _ := blackjack.Rule("HAND_RESULT"); r.Data["payout"] != TypeNumber || !r.PlayerRequired {
+		t.Error("HAND_RESULT needs a player and a numeric payout")
+	}
+	trivia, _ := reg.Game("trivia")
+	if r, _ := trivia.Rule("ANSWER_SUBMITTED"); r.Data["correct"] != TypeBoolean {
+		t.Error("ANSWER_SUBMITTED.correct must be a boolean")
+	}
+	if r, _ := trivia.Rule("MATCH_STARTED"); r.PlayerRequired {
 		t.Error("MATCH_STARTED must not require playerId")
 	}
-	if r, _ := racing.Rule("LAP_COMPLETED"); r.Data["lapTimeMs"] != TypeNumber {
-		t.Error("LAP_COMPLETED.lapTimeMs must be a number")
-	}
-	if _, ok := racing.Rule("MOVE"); ok {
-		t.Error("chess MOVE leaked into racing-pro")
+	if _, ok := trivia.Rule("FOOD_EATEN"); ok {
+		t.Error("snake FOOD_EATEN leaked into trivia")
 	}
 }
 

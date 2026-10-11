@@ -72,7 +72,7 @@ func event(match string, seq int, typ string) model.Event {
 	player := "p-ana"
 	e := model.Event{
 		EventID: fmt.Sprintf("%s-%d-%d", match, seq, rand.Int()),
-		MatchID: match, GameID: "racing-pro", GameVersion: "1.0",
+		MatchID: match, GameID: "snake", GameVersion: "1.0",
 		Seq: seq, Type: typ, PlayerID: &player, Data: map[string]any{},
 		Time: base.Add(time.Duration(seq) * time.Second),
 	}
@@ -83,11 +83,11 @@ func event(match string, seq int, typ string) model.Event {
 	return e
 }
 
-// match builds seq 1..n: MATCH_STARTED, laps, MATCH_FINISHED.
+// match builds seq 1..n: MATCH_STARTED, food eaten, MATCH_FINISHED.
 func match(id string, n int) []model.Event {
 	evs := []model.Event{event(id, 1, "MATCH_STARTED")}
 	for seq := 2; seq < n; seq++ {
-		evs = append(evs, event(id, seq, "LAP_COMPLETED"))
+		evs = append(evs, event(id, seq, "FOOD_EATEN"))
 	}
 	return append(evs, event(id, n, "MATCH_FINISHED"))
 }
@@ -135,7 +135,7 @@ func TestTwentyMatchesInParallel(t *testing.T) {
 	var wg sync.WaitGroup
 	finals := make([]model.Event, matches)
 	for i := 0; i < matches; i++ {
-		evs := match(fmt.Sprintf("rp-%02d", i), size)
+		evs := match(fmt.Sprintf("sn-%02d", i), size)
 		finals[i] = evs[size-1]
 		body := evs[:size-1]
 		rand.Shuffle(len(body), func(a, b int) { body[a], body[b] = body[b], body[a] })
@@ -179,7 +179,7 @@ func TestTwentyMatchesInParallel(t *testing.T) {
 // rejecting it as late.
 func TestStragglerBeforeFinishIsKept(t *testing.T) {
 	h := start(t, defaultCfg)
-	evs := match("rp-x", 5)
+	evs := match("sn-x", 5)
 	for _, i := range []int{0, 1, 3, 4} { // seq 3 held back
 		h.in <- evs[i]
 	}
@@ -194,7 +194,7 @@ func TestStragglerBeforeFinishIsKept(t *testing.T) {
 
 func TestFinishGraceSendsWithMissingSeq(t *testing.T) {
 	h := start(t, Config{IdleTimeout: time.Minute, FinishGrace: 100 * time.Millisecond})
-	evs := match("rp-gap", 4)
+	evs := match("sn-gap", 4)
 	h.in <- evs[0]
 	h.in <- evs[2]
 	h.in <- evs[3] // seq 2 never arrives
@@ -210,20 +210,20 @@ func TestFinishGraceSendsWithMissingSeq(t *testing.T) {
 
 func TestLateEvents(t *testing.T) {
 	h := start(t, defaultCfg)
-	for _, e := range match("rp-late", 3) {
+	for _, e := range match("sn-late", 3) {
 		h.in <- e
 	}
 	receive(t, h.out, time.Second)
 
-	h.in <- event("rp-late", 2, "LAP_COMPLETED")
+	h.in <- event("sn-late", 2, "FOOD_EATEN")
 	waitFor(t, func() bool { return h.rej.count(validation.CodeLateEvent) == 1 })
 
 	// During the grace period, a seq after MATCH_FINISHED is late too.
 	h2 := start(t, Config{IdleTimeout: time.Minute, FinishGrace: 200 * time.Millisecond})
-	evs := match("rp-late2", 4)
+	evs := match("sn-late2", 4)
 	h2.in <- evs[0]
 	h2.in <- evs[3] // finished, seq 2 and 3 missing
-	h2.in <- event("rp-late2", 9, "LAP_COMPLETED")
+	h2.in <- event("sn-late2", 9, "FOOD_EATEN")
 	b := receive(t, h2.out, time.Second)
 	if b.EventCount != 2 || h2.rej.count(validation.CodeLateEvent) != 1 {
 		t.Fatalf("%d events, %d late", b.EventCount, h2.rej.count(validation.CodeLateEvent))
@@ -232,7 +232,7 @@ func TestLateEvents(t *testing.T) {
 
 func TestIdleMatchIsSentAsPartial(t *testing.T) {
 	h := start(t, Config{IdleTimeout: 50 * time.Millisecond, FinishGrace: time.Minute})
-	evs := match("rp-idle", 5)
+	evs := match("sn-idle", 5)
 	h.in <- evs[0]
 	h.in <- evs[1]
 	b := receive(t, h.out, time.Second)
@@ -244,7 +244,7 @@ func TestIdleMatchIsSentAsPartial(t *testing.T) {
 func TestShutdownFlushesOpenMatches(t *testing.T) {
 	h := start(t, defaultCfg)
 	for i := 0; i < 3; i++ {
-		h.in <- event(fmt.Sprintf("rp-open-%d", i), 1, "MATCH_STARTED")
+		h.in <- event(fmt.Sprintf("sn-open-%d", i), 1, "MATCH_STARTED")
 	}
 	waitFor(t, func() bool { return len(h.registry.List()) == 3 })
 	close(h.in)
@@ -264,8 +264,8 @@ func TestShutdownFlushesOpenMatches(t *testing.T) {
 func TestEventFromAnotherGameIsRejected(t *testing.T) {
 	h := start(t, defaultCfg)
 	h.in <- event("shared-id", 1, "MATCH_STARTED")
-	other := event("shared-id", 2, "LAP_COMPLETED")
-	other.GameID = "arena-clash"
+	other := event("shared-id", 2, "FOOD_EATEN")
+	other.GameID = "blackjack"
 	h.in <- other
 	waitFor(t, func() bool { return h.rej.count(validation.CodeInvalidField) == 1 })
 }
@@ -286,12 +286,12 @@ func TestClosingMatchesUnderLoad(t *testing.T) {
 	const matches, late = 50, 5
 	go func() {
 		for i := 0; i < matches; i++ {
-			id := fmt.Sprintf("rp-load-%d", i)
+			id := fmt.Sprintf("sn-load-%d", i)
 			for _, e := range match(id, 3) {
 				h.in <- e
 			}
 			for j := 0; j < late; j++ {
-				h.in <- event(id, 10+j, "LAP_COMPLETED")
+				h.in <- event(id, 10+j, "FOOD_EATEN")
 			}
 		}
 		close(h.in)

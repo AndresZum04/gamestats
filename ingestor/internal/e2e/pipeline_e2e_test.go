@@ -119,25 +119,26 @@ func startSystem(t *testing.T, pcfg pipeline.Config, analyzer *fakeAnalyzer) *sy
 	return s
 }
 
-// raceMatch returns the raw lines of a racing match with seq 1..n:
-// MATCH_STARTED, laps of four drivers, MATCH_FINISHED.
-func raceMatch(id string, n int) [][]byte {
-	drivers := []string{"p-ana", "p-luis", "p-sofi", "p-kev"}
+// triviaMatch returns the raw lines of a trivia match with seq 1..n:
+// MATCH_STARTED, answers of four players, MATCH_FINISHED.
+func triviaMatch(id string, n int) [][]byte {
+	players := []string{"p-ana", "p-luis", "p-sofi", "p-kev"}
 	at := func(seq int) string {
 		return time.Date(2026, 9, 10, 14, 0, 0, 0, time.UTC).Add(time.Duration(seq) * time.Second).Format(model.TimeLayout)
 	}
 	line := func(seq int, typ string, player any, data map[string]any) []byte {
 		raw, _ := json.Marshal(map[string]any{
 			"schemaVersion": "1.0", "eventId": uuid.NewString(), "timestamp": at(seq),
-			"gameId": "racing-pro", "gameVersion": "1.0", "matchId": id, "seq": seq,
+			"gameId": "trivia", "gameVersion": "1.0", "matchId": id, "seq": seq,
 			"playerId": player, "type": typ, "data": data,
 		})
 		return raw
 	}
-	lines := [][]byte{line(1, "MATCH_STARTED", nil, map[string]any{"players": drivers, "mode": "GRAND_PRIX"})}
+	lines := [][]byte{line(1, "MATCH_STARTED", nil, map[string]any{"players": players, "mode": "CLASSIC", "questions": 10})}
 	for seq := 2; seq < n; seq++ {
-		lines = append(lines, line(seq, "LAP_COMPLETED", drivers[seq%len(drivers)],
-			map[string]any{"lap": seq / len(drivers), "lapTimeMs": 90000 + seq, "position": 1 + seq%len(drivers), "topSpeedKmh": 310.5}))
+		lines = append(lines, line(seq, "ANSWER_SUBMITTED", players[seq%len(players)], map[string]any{
+			"questionId": fmt.Sprintf("q-%03d", seq/len(players)), "option": "A", "correct": seq%3 != 0, "responseMs": 1000 + seq,
+		}))
 	}
 	return append(lines, line(n, "MATCH_FINISHED", nil, map[string]any{"durationMs": n * 1000, "results": []any{}}))
 }
@@ -163,8 +164,8 @@ func TestTwentyShuffledMatchesEndToEnd(t *testing.T) {
 	sentIDs := make(map[string]map[string]bool) // matchId -> eventIds
 	var wg sync.WaitGroup
 	for i := 0; i < matches; i++ {
-		id := fmt.Sprintf("rp-e2e-%02d", i)
-		lines := raceMatch(id, size)
+		id := fmt.Sprintf("tv-e2e-%02d", i)
+		lines := triviaMatch(id, size)
 		ids := make(map[string]bool)
 		for _, l := range lines {
 			var e struct{ EventID string }
@@ -222,7 +223,7 @@ func TestTwentyShuffledMatchesEndToEnd(t *testing.T) {
 // batch is delivered without touching the outbox.
 func TestRetryEndToEnd(t *testing.T) {
 	sys := startSystem(t, pipeline.Config{IdleTimeout: time.Minute, FinishGrace: time.Second}, &fakeAnalyzer{failFirst: 2})
-	for _, l := range raceMatch("rp-retry", 5) {
+	for _, l := range triviaMatch("tv-retry", 5) {
 		if err := sys.intake.Submit(context.Background(), l); err != nil {
 			t.Fatal(err)
 		}
@@ -237,7 +238,7 @@ func TestRetryEndToEnd(t *testing.T) {
 // analyzer as PARTIAL.
 func TestIdleTimeoutEndToEnd(t *testing.T) {
 	sys := startSystem(t, pipeline.Config{IdleTimeout: 50 * time.Millisecond, FinishGrace: time.Second}, &fakeAnalyzer{})
-	for _, l := range raceMatch("rp-idle", 10)[:4] { // no MATCH_FINISHED
+	for _, l := range triviaMatch("tv-idle", 10)[:4] { // no MATCH_FINISHED
 		if err := sys.intake.Submit(context.Background(), l); err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +255,7 @@ func TestIdleTimeoutEndToEnd(t *testing.T) {
 // and a new event for it is LATE_EVENT.
 func TestDuplicateAndLateEndToEnd(t *testing.T) {
 	sys := startSystem(t, pipeline.Config{IdleTimeout: time.Minute, FinishGrace: time.Second}, &fakeAnalyzer{})
-	lines := raceMatch("rp-closed", 6)
+	lines := triviaMatch("tv-closed", 6)
 	for _, l := range lines {
 		if err := sys.intake.Submit(context.Background(), l); err != nil {
 			t.Fatal(err)
@@ -266,7 +267,7 @@ func TestDuplicateAndLateEndToEnd(t *testing.T) {
 	if verr, ok := err.(*validation.ValidationError); !ok || verr.Code != validation.CodeDuplicateEvent {
 		t.Fatalf("resent event: got %v, want DUPLICATE_EVENT", err)
 	}
-	fresh := raceMatch("rp-closed", 8)[6] // new eventId, seq 7
+	fresh := triviaMatch("tv-closed", 8)[6] // new eventId, seq 7
 	if err := sys.intake.Submit(context.Background(), fresh); err != nil {
 		t.Fatalf("late event must pass validation, got %v", err)
 	}
