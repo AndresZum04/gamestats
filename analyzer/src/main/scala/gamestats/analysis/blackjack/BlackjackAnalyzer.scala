@@ -8,8 +8,8 @@ import io.circe.Json
 
 import java.time.Instant
 
-/** blackjack: B1 to B4 per player and B5 for the match. The starting chips come from MATCH_STARTED
-  * (1000 if missing).
+/** blackjack: B1 to B4 per player, B5 for the match and patterns P5 and P6. The starting chips come
+  * from MATCH_STARTED (1000 if missing).
   */
 object BlackjackAnalyzer extends ComposedAnalyzer[BlackjackEvent]:
   val gameId = "blackjack"
@@ -51,3 +51,6 @@ object BlackjackAnalyzer extends ComposedAnalyzer[BlackjackEvent]:
 
   override protected def matchMetrics(ctx: MatchContext[BlackjackEvent]): Map[String, Json] =
     BlackjackStats.matchSummary(ctx.events)
+
+  override protected def detectors: List[PatternDetector[BlackjackEvent]] =
+    List(patterns.HotHand.detect, patterns.TiltAllIn.detect)

@@ -8,7 +8,8 @@ import io.circe.Json
 
 import java.time.Instant
 
-/** snake: S1 to S4 per player and S5 for the game. The duration for S2 is G2. */
+/** snake: S1 to S4 per player, S5 for the game and patterns P3 and P4. The duration for S2 is G2.
+  */
 object SnakeAnalyzer extends ComposedAnalyzer[SnakeEvent]:
   val gameId = "snake"
 
@@ -49,3 +50,6 @@ object SnakeAnalyzer extends ComposedAnalyzer[SnakeEvent]:
 
   override def gameMetrics(matches: List[MatchAnalysis]): Map[String, Json] =
     SnakeStats.gameSummary(matches)
+
+  override protected def detectors: List[PatternDetector[SnakeEvent]] =
+    List(patterns.Frenzy.detect, patterns.GreedyDeath.detect)

@@ -8,8 +8,8 @@ import io.circe.Json
 
 import java.time.Instant
 
-/** trivia: T1 to T3 per player, T4 for the match and T5 for the game. The number of questions comes
-  * from MATCH_STARTED (10 if missing).
+/** trivia: T1 to T3 per player, T4 for the match, T5 for the game and patterns P1 and P2. The
+  * number of questions comes from MATCH_STARTED (10 if missing).
   */
 object TriviaAnalyzer extends ComposedAnalyzer[TriviaEvent]:
   val gameId = "trivia"
@@ -51,3 +51,6 @@ object TriviaAnalyzer extends ComposedAnalyzer[TriviaEvent]:
 
   override def gameMetrics(matches: List[MatchAnalysis]): Map[String, Json] =
     TriviaStats.gameSummary(matches)
+
+  override protected def detectors: List[PatternDetector[TriviaEvent]] =
+    List(patterns.AnswerStreak.detect, patterns.TriviaComeback.detect)

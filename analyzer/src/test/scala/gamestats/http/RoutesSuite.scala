@@ -144,8 +144,9 @@ class RoutesSuite extends munit.FunSuite:
           .get[String]("matchId"),
         Right("sn-scn-frenzy")
       )
-      // P1 to P6 come in N5; until then no pattern is found.
-      assertEquals(get("/api/v1/patterns")._2.asArray.map(_.size), Some(0))
+      // One pattern per scenario: P1, P2, P3 and P5.
+      assertEquals(get("/api/v1/patterns")._2.asArray.map(_.size), Some(4))
+      assertEquals(get("/api/v1/patterns?patternId=P5")._2.asArray.map(_.size), Some(1))
 
       assertEquals(get("/api/v1/players/nobody")._1, Status.NotFound)
       assertEquals(get("/api/v1/games/card-duel/summary")._1, Status.NotFound)
