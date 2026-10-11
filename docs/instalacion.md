@@ -186,13 +186,17 @@ pantallas del sistema en funcionamiento para cada juego
 ![pantalla del ajedrez](img/gameStats_ajedrez.png)
 
 detalles de una partida del juego de carreras
+
 ![detalles de una partida del juego de carreras](img/grafico_De_carreras_remontadas.png)
 
 detalles de una partida del juego de equipos
+
 ![detalles de una partida del juego de equipos](img/grafico_de_rachas_de_kills_equipos.png)
 
 patrones detectados en el juego de carreras
+
 ![patrones detectados en el juego de carreras](img/patrones_detectados_carreras.png)
 
 patrones detectados en el juego de equipos
+
 ![patrones detectados en el juego de equipos](img/patrones_detectados_equipos.png)
