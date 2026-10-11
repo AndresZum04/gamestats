@@ -47,7 +47,16 @@ object BlackjackAnalyzer extends ComposedAnalyzer[BlackjackEvent]:
         )
       )
       .toMap
-    Metrics.merge(b1, b2, b3, b4)
+    val chart: PlayerMetrics = chipsByRound(events).view
+      .mapValues(rounds =>
+        Map(
+          "chipsByRound" -> Json.arr(
+            rounds.map((round, c) => Json.obj("round" -> int(round.toLong), "chips" -> int(c)))*
+          )
+        )
+      )
+      .toMap
+    Metrics.merge(b1, b2, b3, b4, chart)
 
   override protected def matchMetrics(ctx: MatchContext[BlackjackEvent]): Map[String, Json] =
     BlackjackStats.matchSummary(ctx.events)

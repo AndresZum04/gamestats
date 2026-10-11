@@ -82,6 +82,29 @@ class SnakeStatsSuite extends munit.FunSuite:
     )
   }
 
+  test("length series for the board: every fruit and death, deaths marked") {
+    val points = kev("lengthSeries").asArray.get.map(p =>
+      (
+        p.hcursor.get[Long]("atMs").toOption.get,
+        p.hcursor.get[Int]("length").toOption.get,
+        p.hcursor.get[Boolean]("died").toOption.get
+      )
+    )
+    assertEquals(
+      points.toList,
+      List(
+        (5000L, 4, false),
+        (9000L, 5, false),
+        (15000L, 6, false),
+        (20000L, 6, true),
+        (30000L, 4, false),
+        (34000L, 5, false),
+        (35000L, 5, true),
+        (50000L, 3, true)
+      )
+    )
+  }
+
   test("S5: length record of the game and most common cause of death") {
     val other = result.copy(
       matchId = "m-2",

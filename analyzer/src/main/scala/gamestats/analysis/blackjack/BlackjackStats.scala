@@ -54,6 +54,14 @@ object BlackjackStats:
       case (acc, _) => acc
     }
 
+  /** Chips after each hand, as (round, chips) in round order, for the board's chart. */
+  def chipsByRound(events: List[BlackjackEvent]): Map[String, List[(Int, Long)]] =
+    hands(events)
+      .groupBy(_.playerId)
+      .view
+      .mapValues(_.sortBy(_.round).map(h => h.round -> h.chips))
+      .toMap
+
   /** B4 for one player: hands doubled, how many were won and their net gain. */
   final case class Doubles(count: Int, won: Int, net: Long):
     def winPct: Double = if count == 0 then 0.0 else 100.0 * won / count

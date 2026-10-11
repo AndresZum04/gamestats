@@ -63,6 +63,18 @@ object SnakeStats:
   def fruitsPerLife(events: List[SnakeEvent]): Map[String, List[Int]] =
     byPlayer(events).view.mapValues(evs => lives(evs).map(_.size)).toMap
 
+  /** One point of the length chart: time, length and whether the snake died there. */
+  final case class LengthPoint(atMs: Long, length: Int, died: Boolean)
+
+  /** Length over the match, from every FOOD_EATEN and SNAKE_DIED, for the board's chart. */
+  def lengthSeries(events: List[SnakeEvent]): Map[String, List[LengthPoint]] =
+    byPlayer(events).view
+      .mapValues(_.collect {
+        case f: FoodEaten => LengthPoint(f.meta.atMs, f.length, false)
+        case d: SnakeDied => LengthPoint(d.meta.atMs, d.length, true)
+      })
+      .toMap
+
   private def counts(m: Map[String, Int]): Json =
     Json.fromFields(m.toList.sortBy(_._1).map((k, v) => k -> int(v.toLong)))
 

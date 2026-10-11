@@ -38,11 +38,27 @@ object SnakeAnalyzer extends ComposedAnalyzer[SnakeEvent]:
           Metrics.average(perLife.map(_.toDouble)).map(a => "avgFruitsPerLife" -> num(a))
       )
       .toMap
+    val chart: PlayerMetrics = lengthSeries(events).view
+      .mapValues(points =>
+        Map(
+          "lengthSeries" -> Json.arr(
+            points.map(pt =>
+              Json.obj(
+                "atMs" -> int(pt.atMs),
+                "length" -> int(pt.length.toLong),
+                "died" -> bool(pt.died)
+              )
+            )*
+          )
+        )
+      )
+      .toMap
     Metrics.merge(
       s1s2,
       avgMsBetweenFruits(events).view.mapValues(ms => Map("avgMsBetweenFruits" -> num(ms))).toMap,
       s3,
-      s4
+      s4,
+      chart
     )
 
   override protected def matchMetrics(ctx: MatchContext[SnakeEvent]): Map[String, Json] =

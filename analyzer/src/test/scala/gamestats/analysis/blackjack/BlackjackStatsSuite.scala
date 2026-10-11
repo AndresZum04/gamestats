@@ -144,6 +144,15 @@ class BlackjackStatsSuite extends munit.FunSuite:
     assertEquals(dbl(m("hands")), 6.0)
   }
 
+  test("chips by round for the board") {
+    def rounds(p: String): List[(Int, Long)] =
+      metrics(p)("chipsByRound").asArray.get.toList.map(r =>
+        (r.hcursor.get[Int]("round").toOption.get, r.hcursor.get[Long]("chips").toOption.get)
+      )
+    assertEquals(rounds("p-gabo"), List(1 -> 450L, 2 -> 1125L, 3 -> 1025L))
+    assertEquals(rounds("p-mari"), List(1 -> 700L, 2 -> 500L, 3 -> 500L))
+  }
+
   test("a game win is first place: p-gabo") {
     assertEquals(
       result.players.map(p => (p.playerId, p.placement)),
