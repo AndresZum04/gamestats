@@ -177,7 +177,7 @@ version de docker utilizada: 29.7.2, build a7dcaa6
 para la instalacion se siguieron exactamente los mismos pasos redactados en este documento, se hizo cd a la carpeta de gameStats para poder usar el comando "powershell -ExecutionPolicy Bypass -File .\uninstall.ps1" correctamente. clonar el repositorio tardo 6 segundos, y la instalacion de GameStats tardo 2:57 minutos. A continuacion se muestran capturas de la instalacion y del programa funcionando correctamente en la computadora.
 
 capturas de la instalacion
-![comando de instalacion](img/comando_instalacion_en_powershell)
+![comando de instalacion](img/comando_instalacion_en_powershell.png)
 ![Instalador terminado](img/instalacion_completa_captura.png)
 
 pantallas del sistema en funcionamiento para cada juego
