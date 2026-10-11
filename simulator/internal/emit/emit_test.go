@@ -18,8 +18,8 @@ import (
 
 // small builds a 3-event match lasting 60 s of game time.
 func small(id string) match.Match {
-	b := match.NewBuilder(rand.New(rand.NewSource(1)), "chess-lite", id)
-	b.Add(0, "MATCH_STARTED", "", "", map[string]any{"players": []string{"p-ana", "p-luis"}, "mode": "CLASSICAL"})
+	b := match.NewBuilder(rand.New(rand.NewSource(1)), "trivia", id)
+	b.Add(0, "MATCH_STARTED", "", "", map[string]any{"players": []string{"p-ana", "p-luis"}, "mode": "CLASSIC"})
 	b.Add(30*time.Second, "TURN_STARTED", "p-ana", "", map[string]any{"turn": 1})
 	b.Add(60*time.Second, "MATCH_FINISHED", "", "", map[string]any{"durationMs": 60000, "results": []any{}})
 	return b.Build()
@@ -30,7 +30,7 @@ func small(id string) match.Match {
 func TestStreamPacesAndAnchorsInThePast(t *testing.T) {
 	dir := t.TempDir()
 	start := time.Now()
-	n, err := Stream(context.Background(), dir, []match.Match{small("cl-a"), small("cl-b")}, 600)
+	n, err := Stream(context.Background(), dir, []match.Match{small("tv-a"), small("tv-b")}, 600)
 	took := time.Since(start)
 	if err != nil || n != 6 {
 		t.Fatalf("lines=%d err=%v", n, err)
@@ -39,7 +39,7 @@ func TestStreamPacesAndAnchorsInThePast(t *testing.T) {
 		t.Errorf("took %s, want about 100 ms", took)
 	}
 
-	f, err := os.Open(filepath.Join(dir, "chess-lite", "cl-a.jsonl"))
+	f, err := os.Open(filepath.Join(dir, "trivia", "tv-a.jsonl"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func TestHTTPSendsBatchesAndWaitsOn503(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	res, err := HTTP(context.Background(), srv.URL, []match.Match{small("cl-c"), small("cl-d")}, 6000, 2)
+	res, err := HTTP(context.Background(), srv.URL, []match.Match{small("tv-c"), small("tv-d")}, 6000, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,10 +103,10 @@ func TestFileIsReproducible(t *testing.T) {
 	dir := t.TempDir()
 	base := time.Date(2026, 9, 10, 14, 0, 0, 0, time.UTC)
 	a, b := filepath.Join(dir, "a.jsonl"), filepath.Join(dir, "b.jsonl")
-	if _, err := File(a, []match.Match{small("cl-e")}, base); err != nil {
+	if _, err := File(a, []match.Match{small("tv-e")}, base); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := File(b, []match.Match{small("cl-e")}, base); err != nil {
+	if _, err := File(b, []match.Match{small("tv-e")}, base); err != nil {
 		t.Fatal(err)
 	}
 	ra, _ := os.ReadFile(a)

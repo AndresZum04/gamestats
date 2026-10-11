@@ -17,7 +17,7 @@ import (
 )
 
 func fileOptions(out string) options {
-	return options{mode: "file", out: out, racing: 3, arena: 3, chess: 2, seed: 42,
+	return options{mode: "file", out: out, trivia: 3, snake: 3, blackjack: 3, seed: 42,
 		speed: 60, invalidRate: 0.03, batch: 50, scenarios: true}
 }
 
@@ -71,7 +71,7 @@ func loadFormat(t *testing.T) map[string]map[string]rule {
 	}
 	_, common := read("_common.json")
 	games := map[string]map[string]rule{}
-	for _, name := range []string{"racing-pro.json", "arena-clash.json", "chess-lite.json"} {
+	for _, name := range []string{"trivia.json", "snake.json", "blackjack.json"} {
 		id, own := read(name)
 		all := map[string]rule{}
 		for k, v := range common {
@@ -124,7 +124,7 @@ func generate(t *testing.T, o options) []match.Match {
 func TestEventsFollowPublishedFormat(t *testing.T) {
 	format := loadFormat(t)
 	o := fileOptions("")
-	o.racing, o.arena, o.chess = 6, 6, 4
+	o.trivia, o.snake, o.blackjack = 8, 8, 12
 	types := map[string]bool{}
 	for _, m := range generate(t, o) {
 		ids := map[string]bool{}
@@ -167,11 +167,13 @@ func TestEventsFollowPublishedFormat(t *testing.T) {
 	// PLAYER_ACTION is for games without their own types, so none of the
 	// three uses it.
 	lifecycle := []string{"MATCH_STARTED", "MATCH_FINISHED", "PLAYER_JOINED"}
-	presence := []string{"PLAYER_LEFT", "PLAYER_DISCONNECTED", "PLAYER_RECONNECTED"}
 	expected := map[string][]string{
-		"racing-pro":  append(append([]string{"LAP_COMPLETED", "POSITION_CHANGED", "PIT_STOP", "PENALTY", "CRASH"}, lifecycle...), presence...),
-		"arena-clash": append(append([]string{"DAMAGE_DEALT", "PLAYER_ELIMINATED", "ITEM_PICKED", "OBJECTIVE_CAPTURED", "PLAYER_RESPAWNED"}, lifecycle...), presence...),
-		"chess-lite":  append([]string{"MOVE", "TURN_STARTED", "TURN_ENDED", "SCORE_CHANGED"}, lifecycle...),
+		"trivia": append([]string{"QUESTION_SHOWN", "ANSWER_SUBMITTED", "ANSWER_TIMEOUT", "QUESTION_CLOSED",
+			"SCORE_CHANGED", "PLAYER_DISCONNECTED", "PLAYER_RECONNECTED"}, lifecycle...),
+		"snake": append([]string{"FOOD_EATEN", "POWERUP_PICKED", "LEVEL_UP", "SNAKE_DIED", "PLAYER_RESPAWNED",
+			"SCORE_CHANGED"}, lifecycle...),
+		"blackjack": append([]string{"ROUND_STARTED", "BET_PLACED", "CARD_DEALT", "DEALER_CARD", "DECISION", "BUST",
+			"BLACKJACK", "HAND_RESULT", "TURN_STARTED", "TURN_ENDED", "PLAYER_LEFT"}, lifecycle...),
 	}
 	var missing []string
 	for game, list := range expected {
@@ -191,7 +193,7 @@ func TestEventsFollowPublishedFormat(t *testing.T) {
 // rejections can be compared with the ingestor's stats.
 func TestInjectedProblems(t *testing.T) {
 	o := fileOptions("")
-	o.racing, o.arena = 6, 6
+	o.trivia, o.snake, o.blackjack = 6, 6, 6
 	o.invalidRate = 0.05
 	var total inject.Counts
 	defects := map[string]int{}
@@ -237,7 +239,7 @@ func TestInjectedProblems(t *testing.T) {
 
 func TestNothingHappensAfterTheEnd(t *testing.T) {
 	o := fileOptions("")
-	o.racing, o.arena, o.chess = 10, 10, 4
+	o.trivia, o.snake, o.blackjack = 10, 10, 10
 	for _, m := range generate(t, o) {
 		last := m.Events[len(m.Events)-1]
 		for _, e := range m.Events[:len(m.Events)-1] {

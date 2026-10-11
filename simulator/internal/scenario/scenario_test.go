@@ -1,8 +1,8 @@
 package scenario
 
 import (
-	"math"
 	"math/rand"
+	"sort"
 	"testing"
 	"time"
 
@@ -12,7 +12,7 @@ import (
 // These tests check the claims written above each scenario, so a change
 // in a generator cannot silently break a demo pattern. They are an oracle
 // for the simulator's design, not the analysis: the real detection lives
-// in the Scala analyzer (T15), which has its own tests on these matches.
+// in the Scala analyzer, which has its own tests.
 
 func build(t *testing.T, id string) match.Match {
 	t.Helper()
@@ -42,203 +42,161 @@ func num(v any) int {
 	return -1
 }
 
-type lap struct{ lap, timeMs, position int }
-
-func racingData(m match.Match) (laps map[string][]lap, placement map[string]int) {
-	laps, placement = map[string][]lap{}, map[string]int{}
-	for _, e := range m.Events {
-		switch e.Type {
-		case "LAP_COMPLETED":
-			laps[player(e)] = append(laps[player(e)], lap{num(e.Data["lap"]), num(e.Data["lapTimeMs"]), num(e.Data["position"])})
-		case "MATCH_FINISHED":
-			for _, r := range e.Data["results"].([]any) {
-				rm := r.(map[string]any)
-				placement[rm["playerId"].(string)] = num(rm["placement"])
-			}
-		}
-	}
-	return laps, placement
-}
-
-// comebacks lists drivers that were in the last three from lap 2 on and
-// finished on the podium (P1).
-func comebacks(m match.Match) []string {
-	laps, placement := racingData(m)
-	n := len(placement)
-	var out []string
-	for p, ls := range laps {
-		worst := 0
-		for _, l := range ls {
-			if l.lap >= 2 {
-				worst = max(worst, l.position)
-			}
-		}
-		if worst > n-3 && placement[p] <= 3 {
-			out = append(out, p)
-		}
-	}
-	return out
-}
-
-// steadyStreaks counts windows of 3 consecutive laps within 1 % of their
-// average (P2), per driver.
-func steadyStreaks(m match.Match) map[string]int {
-	laps, _ := racingData(m)
+func placements(m match.Match) map[string]int {
 	out := map[string]int{}
-	for p, ls := range laps {
-		for i := 0; i+2 < len(ls); i++ {
-			w := ls[i : i+3]
-			avg := float64(w[0].timeMs+w[1].timeMs+w[2].timeMs) / 3
-			ok := true
-			for _, l := range w {
-				ok = ok && math.Abs(float64(l.timeMs)-avg) <= avg*0.01
-			}
-			if ok {
-				out[p]++
-			}
-		}
+	last := m.Events[len(m.Events)-1]
+	for _, r := range last.Data["results"].([]any) {
+		rm := r.(map[string]any)
+		out[rm["playerId"].(string)] = num(rm["placement"])
 	}
 	return out
 }
 
-func TestComebackOnlyForAna(t *testing.T) {
-	m := build(t, "rp-scn-comeback")
-	if got := comebacks(m); len(got) != 1 || got[0] != "p-ana" {
-		t.Fatalf("comebacks = %v, want [p-ana]", got)
-	}
-	_, placement := racingData(m)
-	if placement["p-ana"] != 2 {
-		t.Errorf("p-ana finished %d, want 2", placement["p-ana"])
-	}
-	if s := steadyStreaks(m); len(s) != 0 {
-		t.Errorf("unexpected steady streaks %v", s)
-	}
-}
+// patterns finds P1 to P6 in a match, following the definitions of the
+// specification, and returns who showed each one (once per occurrence).
+func patterns(m match.Match) map[string][]string {
+	found := map[string][]string{}
+	add := func(p, who string) { found[p] = append(found[p], who) }
 
-func TestSteadyOnlyForKev(t *testing.T) {
-	m := build(t, "rp-scn-steady")
-	s := steadyStreaks(m)
-	if len(s) != 1 || s["p-kev"] == 0 {
-		t.Fatalf("steady streaks = %v, want only p-kev", s)
+	// P1: 5 or more right answers in a row; a wrong answer or a timeout
+	// ends the streak. Events come ordered by question.
+	run := map[string]int{}
+	for _, e := range m.Events {
+		switch {
+		case e.Type == "ANSWER_SUBMITTED" && e.Data["correct"] == true:
+			run[player(e)]++
+			if run[player(e)] == 5 {
+				add("P1", player(e))
+			}
+		case e.Type == "ANSWER_SUBMITTED" || e.Type == "ANSWER_TIMEOUT":
+			run[player(e)] = 0
+		}
 	}
-	laps, _ := racingData(m)
-	kev := laps["p-kev"][3:7] // laps 4 to 7
-	lo, hi := kev[0].timeMs, kev[0].timeMs
-	for _, l := range kev {
-		lo, hi = min(lo, l.timeMs), max(hi, l.timeMs)
-	}
-	if float64(hi-lo) > float64(lo)*0.005 {
-		t.Errorf("laps 4-7 of p-kev spread %d ms, more than 0.5 %%", hi-lo)
-	}
-	if c := comebacks(m); len(c) != 0 {
-		t.Errorf("unexpected comebacks %v", c)
-	}
-}
 
-type kill struct {
-	at             time.Duration
-	killer, victim string
-}
+	// P2: alone in last place after a QUESTION_CLOSED from question 2 on,
+	// and placement 1 at the end.
+	if m.GameID == "trivia" {
+		total := map[string]int{}
+		var players []string
+		number := 0
+		lastAlone := map[string]bool{}
+		for _, e := range m.Events {
+			switch e.Type {
+			case "MATCH_STARTED":
+				for _, p := range e.Data["players"].([]string) {
+					players = append(players, p)
+				}
+			case "QUESTION_SHOWN":
+				number = num(e.Data["number"])
+			case "SCORE_CHANGED":
+				total[player(e)] = num(e.Data["total"])
+			case "QUESTION_CLOSED":
+				if number < 2 {
+					continue
+				}
+				sorted := append([]string{}, players...)
+				sort.Slice(sorted, func(i, j int) bool { return total[sorted[i]] < total[sorted[j]] })
+				if total[sorted[0]] < total[sorted[1]] {
+					lastAlone[sorted[0]] = true
+				}
+			}
+		}
+		for p := range lastAlone {
+			if placements(m)[p] == 1 {
+				add("P2", p)
+			}
+		}
+	}
 
-func arenaData(m match.Match) (kills []kill, teams map[string]string, winner string, left map[string]time.Duration) {
-	teams, left = map[string]string{}, map[string]time.Duration{}
+	// P3: 5 fruits within 15 s in the same life, once per life.
+	// P4: a death less than 2 s after a fruit.
+	var life []time.Duration
+	reported := false
+	lastFood := time.Duration(-1)
 	for _, e := range m.Events {
 		switch e.Type {
-		case "PLAYER_JOINED":
-			teams[player(e)] = e.Data["teamId"].(string)
-		case "PLAYER_ELIMINATED":
-			kills = append(kills, kill{e.Offset, player(e), e.Data["victimId"].(string)})
-		case "PLAYER_LEFT":
-			left[player(e)] = e.Offset
-		case "MATCH_FINISHED":
-			winner = e.Data["winnerTeam"].(string)
+		case "FOOD_EATEN":
+			life = append(life, e.Offset)
+			lastFood = e.Offset
+			if n := len(life); n >= 5 && !reported && life[n-1]-life[n-5] <= 15*time.Second {
+				add("P3", player(e))
+				reported = true
+			}
+		case "SNAKE_DIED":
+			if lastFood >= 0 && e.Offset-lastFood < 2*time.Second {
+				add("P4", player(e))
+			}
+			life, reported = nil, false
 		}
 	}
-	return
-}
 
-// patterns counts P3 to P6 on a combat match, following the plan's table.
-func patterns(m match.Match) map[string][]string {
-	kills, teams, winner, left := arenaData(m)
-	found := map[string][]string{}
-	// P3: 3 kills by the same player within 10 s, without dying between.
-	for i := range kills {
-		k := kills[i]
-		n := 1
-		for _, o := range kills[i+1:] {
-			if o.at-k.at > 10*time.Second || o.victim == k.killer {
-				break
+	// P5: 4 or more wins in a row. P6: an all-in bet right after 3 losses.
+	results := map[string][]string{}
+	for _, e := range m.Events {
+		switch e.Type {
+		case "HAND_RESULT":
+			p := player(e)
+			results[p] = append(results[p], e.Data["result"].(string))
+			k := len(results[p])
+			if k >= 4 && results[p][k-1] == "WIN" && (k == 4 || results[p][k-5] != "WIN") &&
+				results[p][k-2] == "WIN" && results[p][k-3] == "WIN" && results[p][k-4] == "WIN" {
+				add("P5", p)
 			}
-			if o.killer == k.killer {
-				n++
-			}
-		}
-		if n >= 3 {
-			found["P3"] = append(found["P3"], k.killer)
-		}
-	}
-	// P4: A kills B and B kills A within 60 s.
-	for i, k := range kills {
-		for _, o := range kills[i+1:] {
-			if o.at-k.at <= 60*time.Second && o.killer == k.victim && o.victim == k.killer {
-				found["P4"] = append(found["P4"], o.killer)
-			}
-		}
-	}
-	// P5: the winning team was 5 or more kills behind at some point.
-	score := map[string]int{}
-	other := map[string]string{"RED": "BLUE", "BLUE": "RED"}
-	for _, k := range kills {
-		score[teams[k.killer]]++
-		if score[other[winner]]-score[winner] >= 5 {
-			found["P5"] = []string{winner}
-		}
-	}
-	// P6: 3 deaths within 60 s, then PLAYER_LEFT within 30 s.
-	for p, at := range left {
-		var deaths []time.Duration
-		for _, k := range kills {
-			if k.victim == p && k.at <= at {
-				deaths = append(deaths, k.at)
-			}
-		}
-		for i := 0; i+2 < len(deaths); i++ {
-			if deaths[i+2]-deaths[i] <= 60*time.Second && at-deaths[i+2] <= 30*time.Second {
-				found["P6"] = append(found["P6"], p)
-				break
+		case "BET_PLACED":
+			p := player(e)
+			r := results[p]
+			if k := len(r); k >= 3 && r[k-1] == "LOSE" && r[k-2] == "LOSE" && r[k-3] == "LOSE" &&
+				num(e.Data["amount"]) == num(e.Data["chipsBefore"]) {
+				add("P6", p)
 			}
 		}
 	}
 	return found
 }
 
-func TestArenaScenariosHaveOnlyTheirPattern(t *testing.T) {
-	cases := map[string]struct{ pattern, who string }{
-		"ac-scn-spree":    {"P3", "p-ana"},
-		"ac-scn-revenge":  {"P4", "p-tomi"},
-		"ac-scn-teamback": {"P5", "BLUE"},
-		"ac-scn-ragequit": {"P6", "p-gabo"},
+func TestEachScenarioHasOnlyItsPattern(t *testing.T) {
+	want := map[string]struct{ pattern, who string }{
+		"tv-scn-streak":   {"P1", "p-ana"},
+		"tv-scn-comeback": {"P2", "p-luis"},
+		"sn-scn-frenzy":   {"P3", "p-kev"},
+		"sn-scn-greedy":   {"P4", "p-dani"},
+		"bj-scn-hot":      {"P5", "p-mari"},
+		"bj-scn-allin":    {"P6", "p-gabo"},
 	}
-	for id, want := range cases {
-		t.Run(id, func(t *testing.T) {
-			found := patterns(build(t, id))
-			if len(found) != 1 || len(found[want.pattern]) == 0 {
-				t.Fatalf("patterns = %v, want only %s", found, want.pattern)
+	for _, s := range All() {
+		t.Run(s.MatchID, func(t *testing.T) {
+			w := want[s.MatchID]
+			if s.Pattern != w.pattern {
+				t.Fatalf("scenario says %s, test expects %s", s.Pattern, w.pattern)
 			}
-			for _, who := range found[want.pattern] {
-				if who != want.who {
-					t.Fatalf("%s found for %s, want %s", want.pattern, who, want.who)
-				}
+			found := patterns(build(t, s.MatchID))
+			if len(found) != 1 || len(found[w.pattern]) != 1 || found[w.pattern][0] != w.who {
+				t.Fatalf("patterns = %v, want only %s for %s", found, w.pattern, w.who)
 			}
 		})
 	}
 }
 
-func TestTeambackScore(t *testing.T) {
-	m := build(t, "ac-scn-teamback")
-	last := m.Events[len(m.Events)-1]
-	score := last.Data["score"].(map[string]any)
-	if last.Data["winnerTeam"] != "BLUE" || num(score["BLUE"]) != 30 || num(score["RED"]) != 27 {
-		t.Fatalf("final %v, winner %v", score, last.Data["winnerTeam"])
+// The winners written in the comments.
+func TestScenarioWinners(t *testing.T) {
+	cases := map[string]map[string]int{
+		"tv-scn-streak":   {"p-ana": 1, "p-luis": 2, "p-sofi": 2},
+		"tv-scn-comeback": {"p-luis": 1, "p-ana": 2, "p-sofi": 2},
+	}
+	for id, want := range cases {
+		got := placements(build(t, id))
+		for p, pl := range want {
+			if got[p] != pl {
+				t.Errorf("%s: %s placement %d, want %d", id, p, got[p], pl)
+			}
+		}
+	}
+	m := build(t, "bj-scn-allin")
+	for _, e := range m.Events {
+		if e.Type == "BET_PLACED" && player(e) == "p-gabo" && num(e.Data["round"]) == 4 {
+			if num(e.Data["amount"]) != 700 || num(e.Data["chipsBefore"]) != 700 {
+				t.Errorf("all-in bet %v", e.Data)
+			}
+		}
 	}
 }

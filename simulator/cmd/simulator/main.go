@@ -17,13 +17,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/AndresZum04/gamestats/simulator/internal/arena"
-	"github.com/AndresZum04/gamestats/simulator/internal/chess"
+	"github.com/AndresZum04/gamestats/simulator/internal/blackjack"
 	"github.com/AndresZum04/gamestats/simulator/internal/emit"
 	"github.com/AndresZum04/gamestats/simulator/internal/inject"
 	"github.com/AndresZum04/gamestats/simulator/internal/match"
-	"github.com/AndresZum04/gamestats/simulator/internal/racing"
 	"github.com/AndresZum04/gamestats/simulator/internal/scenario"
+	"github.com/AndresZum04/gamestats/simulator/internal/snake"
+	"github.com/AndresZum04/gamestats/simulator/internal/trivia"
 )
 
 // fileBase is the start of the first match in file mode. It is in the
@@ -41,7 +41,7 @@ var playerPool = []string{
 
 type options struct {
 	mode, eventsDir, out, target string
-	racing, arena, chess         int
+	trivia, snake, blackjack     int
 	seed                         int64
 	speed, invalidRate           float64
 	batch                        int
@@ -54,9 +54,9 @@ func main() {
 	flag.StringVar(&o.eventsDir, "events-dir", "data/events", "shared events folder (stream mode)")
 	flag.StringVar(&o.out, "out", "", "output file (file mode)")
 	flag.StringVar(&o.target, "target", "http://localhost:8080", "ingestor URL (http mode)")
-	flag.IntVar(&o.racing, "racing", 4, "racing matches")
-	flag.IntVar(&o.arena, "arena", 4, "combat matches")
-	flag.IntVar(&o.chess, "chess", 2, "chess matches")
+	flag.IntVar(&o.trivia, "trivia", 4, "trivia matches")
+	flag.IntVar(&o.snake, "snake", 4, "snake matches")
+	flag.IntVar(&o.blackjack, "blackjack", 4, "blackjack matches")
 	flag.Int64Var(&o.seed, "seed", 42, "random seed; 0 picks one and tags the matchIds so every run is new")
 	flag.Float64Var(&o.speed, "speed", 60, "time acceleration factor (>= 1)")
 	flag.Float64Var(&o.invalidRate, "invalid-rate", 0.03, "share of invalid events")
@@ -117,7 +117,7 @@ func validate(o options) error {
 	if o.invalidRate < 0 || o.invalidRate > 0.5 {
 		return errors.New("--invalid-rate must be between 0 and 0.5")
 	}
-	if o.racing < 0 || o.arena < 0 || o.chess < 0 || o.batch < 1 {
+	if o.trivia < 0 || o.snake < 0 || o.blackjack < 0 || o.batch < 1 {
 		return errors.New("counts must be >= 0 and --batch >= 1")
 	}
 	return nil
@@ -142,9 +142,9 @@ func plan(o options, rng *rand.Rand, suffix string) []job {
 			})
 		}
 	}
-	add("rp", racing.GameID, o.racing, racing.Generate)
-	add("ac", arena.GameID, o.arena, arena.Generate)
-	add("cl", chess.GameID, o.chess, chess.Generate)
+	add("tv", trivia.GameID, o.trivia, trivia.Generate)
+	add("sn", snake.GameID, o.snake, snake.Generate)
+	add("bj", blackjack.GameID, o.blackjack, blackjack.Generate)
 	if o.scenarios {
 		// Scenarios get no injected problems: each must show exactly its
 		// pattern.
