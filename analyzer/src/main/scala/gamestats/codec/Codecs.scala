@@ -78,5 +78,4 @@ object Codecs:
   given Codec.AsObject[PlayerProfile] = deriveCodec
   given Codec.AsObject[LeaderboardEntry] = deriveCodec
   given Codec.AsObject[Leaderboard] = deriveCodec
-  given Codec.AsObject[WeaponStat] = deriveCodec
   given Codec.AsObject[GameSummary] = deriveCodec

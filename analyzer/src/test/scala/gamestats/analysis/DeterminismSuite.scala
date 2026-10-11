@@ -8,12 +8,12 @@ import gamestats.fixtures.Samples
 class DeterminismSuite extends munit.FunSuite:
 
   val scenarios = List(
-    "rp-scn-comeback",
-    "rp-scn-steady",
-    "ac-scn-spree",
-    "ac-scn-revenge",
-    "ac-scn-teamback",
-    "ac-scn-ragequit"
+    "tv-scn-streak",
+    "tv-scn-comeback",
+    "sn-scn-frenzy",
+    "sn-scn-greedy",
+    "bj-scn-hot",
+    "bj-scn-allin"
   )
 
   for id <- scenarios do
@@ -24,16 +24,13 @@ class DeterminismSuite extends munit.FunSuite:
     }
 
   test("analyzing other matches in between does not change a result") {
-    val race = Samples.scenario("rp-scn-steady")
-    val before = AnalyzerRegistry.forGame(race.gameId).analyze(race)
+    val table = Samples.scenario("bj-scn-hot")
+    val before = AnalyzerRegistry.forGame(table.gameId).analyze(table)
     scenarios.map(Samples.scenario).foreach(b => AnalyzerRegistry.forGame(b.gameId).analyze(b))
-    assertEquals(AnalyzerRegistry.forGame(race.gameId).analyze(race), before)
+    assertEquals(AnalyzerRegistry.forGame(table.gameId).analyze(table), before)
   }
 
-  test("the generic analyzer is deterministic on a real racing match too") {
-    val race = Samples.scenario("rp-scn-comeback")
-    assertEquals(
-      GenericAnalyzer("racing-pro").analyze(race),
-      GenericAnalyzer("racing-pro").analyze(race)
-    )
+  test("the generic analyzer is deterministic on a real trivia match too") {
+    val quiz = Samples.scenario("tv-scn-comeback")
+    assertEquals(GenericAnalyzer("trivia").analyze(quiz), GenericAnalyzer("trivia").analyze(quiz))
   }

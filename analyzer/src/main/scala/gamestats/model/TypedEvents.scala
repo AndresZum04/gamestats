@@ -19,7 +19,7 @@ enum CommonEvent:
       players: List[String],
       mode: String,
       teams: Map[String, List[String]],
-      venue: Option[String] // track or map
+      settings: JsonObject // the whole data: each game reads its own keys (questions, lives...)
   )
   case MatchFinished(
       meta: Meta,
@@ -46,61 +46,60 @@ enum CommonEvent:
 
   def meta: Meta
 
-/** racing-pro events. */
-enum RacingEvent:
-  case LapCompleted(
-      meta: Meta,
-      playerId: String,
-      lap: Int,
-      lapTimeMs: Long,
-      position: Int,
-      topSpeedKmh: Double
-  )
-  case PositionChanged(
-      meta: Meta,
-      playerId: String,
-      action: String, // OVERTAKE, OVERTAKEN, PIT or CRASH
-      lap: Int,
-      from: Int,
-      to: Int,
-      otherPlayerId: Option[String]
-  )
-  case PitStop(meta: Meta, playerId: String, lap: Int, durationMs: Long, tire: String)
-  case Penalty(meta: Meta, playerId: String, lap: Int, seconds: Double, reason: String)
-  case Crash(
-      meta: Meta,
-      playerId: String,
-      lap: Int,
-      severity: String,
-      otherPlayerId: Option[String]
-  )
-
-  def meta: Meta
-  def playerId: String
-
-/** arena-clash events. playerId is the one who acts: attacker, eliminator, collector.
+/** trivia events. Questions belong to the match, not to a player: QUESTION_SHOWN and
+  * QUESTION_CLOSED have no playerId.
   */
-enum ArenaEvent:
-  case DamageDealt(
+enum TriviaEvent:
+  case QuestionShown(
+      meta: Meta,
+      questionId: String,
+      number: Int,
+      category: String,
+      difficulty: String,
+      timeLimitMs: Long
+  )
+  case AnswerSubmitted(
       meta: Meta,
       playerId: String,
-      targetId: String,
-      weapon: String,
-      amount: Double,
-      distanceM: Double,
-      headshot: Boolean
+      questionId: String,
+      option: String,
+      correct: Boolean,
+      responseMs: Long
   )
-  case PlayerEliminated(
-      meta: Meta,
-      playerId: String,
-      victimId: String,
-      weapon: String,
-      distanceM: Double,
-      assistIds: List[String]
-  )
-  case ItemPicked(meta: Meta, playerId: String, itemId: String, itemType: String)
-  case ObjectiveCaptured(meta: Meta, playerId: String, objectiveId: String, teamId: String)
-  case PlayerRespawned(meta: Meta, playerId: String)
+  case AnswerTimeout(meta: Meta, playerId: String, questionId: String)
+  case QuestionClosed(meta: Meta, questionId: String, correctOption: String, correctCount: Int)
+
+  def meta: Meta
+
+/** snake events. Every one belongs to the player. */
+enum SnakeEvent:
+  case FoodEaten(meta: Meta, playerId: String, foodType: String, length: Int, points: Int)
+  case PowerupPicked(meta: Meta, playerId: String, powerup: String, durationMs: Long)
+  case LevelUp(meta: Meta, playerId: String, level: Int, speed: Double)
+  case SnakeDied(meta: Meta, playerId: String, cause: String, length: Int, livesLeft: Int)
+  case PlayerRespawned(meta: Meta, playerId: String, livesLeft: Int)
 
   def meta: Meta
   def playerId: String
+
+/** blackjack events. The house is not a player: ROUND_STARTED and DEALER_CARD have no playerId.
+  * DECISION takes its action (HIT, STAND or DOUBLE) from the envelope.
+  */
+enum BlackjackEvent:
+  case RoundStarted(meta: Meta, round: Int)
+  case BetPlaced(meta: Meta, playerId: String, round: Int, amount: Long, chipsBefore: Long)
+  case CardDealt(meta: Meta, playerId: String, round: Int, card: String, handValue: Int)
+  case DealerCard(meta: Meta, round: Int, card: String, hidden: Boolean, dealerValue: Int)
+  case Decision(meta: Meta, playerId: String, action: String, round: Int, handValue: Int)
+  case Bust(meta: Meta, playerId: String, round: Int, handValue: Int)
+  case Blackjack(meta: Meta, playerId: String, round: Int)
+  case HandResult(
+      meta: Meta,
+      playerId: String,
+      round: Int,
+      result: String, // WIN, LOSE or PUSH
+      payout: Long, // net gain of the hand, negative when lost
+      chips: Long
+  )
+
+  def meta: Meta

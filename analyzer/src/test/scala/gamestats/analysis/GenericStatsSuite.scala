@@ -8,9 +8,11 @@ import java.time.Instant
 
 class GenericStatsSuite extends munit.FunSuite:
 
-  /** A chess-like match: two players, turns, captures, a disconnection. */
-  val chess: MatchBatch = batch(
-    "chess-lite",
+  /** A match of card-duel, a game with no analyzer of its own (it exists only in this test): two
+    * players, turns, scores, a disconnection.
+    */
+  val duel: MatchBatch = batch(
+    "card-duel",
     List(
       sys(0, "MATCH_STARTED", "players" -> arr("p-ana", "p-luis"), "mode" -> s("CLASSICAL")),
       e(2, "TURN_ENDED", "p-ana", "turn" -> n(1), "durationMs" -> n(4000)),
@@ -34,7 +36,7 @@ class GenericStatsSuite extends munit.FunSuite:
     )
   )
 
-  val analysis: MatchAnalysis = GenericAnalyzer("chess-lite").analyze(chess)
+  val analysis: MatchAnalysis = GenericAnalyzer("card-duel").analyze(duel)
 
   def metric(p: String, name: String): Option[Json] =
     analysis.players.find(_.playerId == p).flatMap(_.metrics.get(name))
@@ -47,8 +49,8 @@ class GenericStatsSuite extends munit.FunSuite:
 
   test("G2 takes durationMs from MATCH_FINISHED, or first to last event when PARTIAL") {
     assertEquals(analysis.durationMs, 30000L)
-    val partial = chess.copy(events = chess.events.dropRight(1), status = BatchStatus.PARTIAL)
-    assertEquals(GenericAnalyzer("chess-lite").analyze(partial).durationMs, 25000L)
+    val partial = duel.copy(events = duel.events.dropRight(1), status = BatchStatus.PARTIAL)
+    assertEquals(GenericAnalyzer("card-duel").analyze(partial).durationMs, 25000L)
     assertEquals(GenericStats.durationMs(Nil), 0L)
   }
 
@@ -83,13 +85,13 @@ class GenericStatsSuite extends munit.FunSuite:
   }
 
   test("a PARTIAL match has no placements, even if results came in") {
-    val partial = GenericAnalyzer("chess-lite").analyze(chess.copy(status = BatchStatus.PARTIAL))
+    val partial = GenericAnalyzer("card-duel").analyze(duel.copy(status = BatchStatus.PARTIAL))
     assert(partial.partial)
     assert(partial.players.forall(_.placement.isEmpty))
   }
 
   test("the analysis is deterministic") {
-    assertEquals(GenericAnalyzer("chess-lite").analyze(chess), analysis)
+    assertEquals(GenericAnalyzer("card-duel").analyze(duel), analysis)
   }
 
   test("adding a game: an object extending ComposedAnalyzer plus one registry entry") {

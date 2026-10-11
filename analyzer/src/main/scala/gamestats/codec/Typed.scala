@@ -39,9 +39,7 @@ object Typed:
           players <- field[List[String]](d, "players")
           mode <- field[String](d, "mode")
           teams <- optional[Map[String, List[String]]](d, "teams")
-          track <- optional[String](d, "track")
-          map <- optional[String](d, "map")
-        yield MatchStarted(m, players, mode, teams.getOrElse(Map.empty), track.orElse(map))
+        yield MatchStarted(m, players, mode, teams.getOrElse(Map.empty), d)
       case "MATCH_FINISHED" =>
         for
           duration <- field[Long](d, "durationMs")
@@ -87,78 +85,126 @@ object Typed:
       case "PLAYER_ACTION" => e.playerId.map(PlayerAction(m, _, e.action, d))
       case _               => None
 
-  def toRacing(e: Event, start: Instant): Option[RacingEvent] =
-    import RacingEvent.*
+  def toTrivia(e: Event, start: Instant): Option[TriviaEvent] =
+    import TriviaEvent.*
     val d = e.data
     val m = meta(e, start)
-    e.playerId.flatMap { p =>
-      e.eventType match
-        case "LAP_COMPLETED" =>
-          for
-            lap <- field[Int](d, "lap")
-            time <- field[Long](d, "lapTimeMs")
-            position <- field[Int](d, "position")
-            speed <- field[Double](d, "topSpeedKmh")
-          yield LapCompleted(m, p, lap, time, position, speed)
-        case "POSITION_CHANGED" =>
-          for
-            lap <- field[Int](d, "lap")
-            from <- field[Int](d, "from")
-            to <- field[Int](d, "to")
-            other <- optional[String](d, "otherPlayerId")
-          yield PositionChanged(m, p, e.action.getOrElse(""), lap, from, to, other)
-        case "PIT_STOP" =>
-          for
-            lap <- field[Int](d, "lap")
-            duration <- field[Long](d, "durationMs")
-            tire <- field[String](d, "tire")
-          yield PitStop(m, p, lap, duration, tire)
-        case "PENALTY" =>
-          for
-            lap <- field[Int](d, "lap")
-            seconds <- field[Double](d, "seconds")
-            reason <- field[String](d, "reason")
-          yield Penalty(m, p, lap, seconds, reason)
-        case "CRASH" =>
-          for
-            lap <- field[Int](d, "lap")
-            severity <- field[String](d, "severity")
-            other <- optional[String](d, "otherPlayerId")
-          yield Crash(m, p, lap, severity, other)
-        case _ => None
-    }
+    e.eventType match
+      case "QUESTION_SHOWN" =>
+        for
+          q <- field[String](d, "questionId")
+          number <- field[Int](d, "number")
+          category <- field[String](d, "category")
+          difficulty <- field[String](d, "difficulty")
+          limit <- field[Long](d, "timeLimitMs")
+        yield QuestionShown(m, q, number, category, difficulty, limit)
+      case "ANSWER_SUBMITTED" =>
+        for
+          p <- e.playerId
+          q <- field[String](d, "questionId")
+          option <- field[String](d, "option")
+          correct <- field[Boolean](d, "correct")
+          response <- field[Long](d, "responseMs")
+        yield AnswerSubmitted(m, p, q, option, correct, response)
+      case "ANSWER_TIMEOUT" =>
+        for
+          p <- e.playerId
+          q <- field[String](d, "questionId")
+        yield AnswerTimeout(m, p, q)
+      case "QUESTION_CLOSED" =>
+        for
+          q <- field[String](d, "questionId")
+          option <- field[String](d, "correctOption")
+          count <- field[Int](d, "correctCount")
+        yield QuestionClosed(m, q, option, count)
+      case _ => None
 
-  def toArena(e: Event, start: Instant): Option[ArenaEvent] =
-    import ArenaEvent.*
+  def toSnake(e: Event, start: Instant): Option[SnakeEvent] =
+    import SnakeEvent.*
     val d = e.data
     val m = meta(e, start)
     e.playerId.flatMap { p =>
       e.eventType match
-        case "DAMAGE_DEALT" =>
+        case "FOOD_EATEN" =>
           for
-            target <- field[String](d, "targetId")
-            weapon <- field[String](d, "weapon")
-            amount <- field[Double](d, "amount")
-            distance <- field[Double](d, "distanceM")
-            headshot <- field[Boolean](d, "headshot")
-          yield DamageDealt(m, p, target, weapon, amount, distance, headshot)
-        case "PLAYER_ELIMINATED" =>
+            food <- field[String](d, "foodType")
+            length <- field[Int](d, "length")
+            points <- field[Int](d, "points")
+          yield FoodEaten(m, p, food, length, points)
+        case "POWERUP_PICKED" =>
           for
-            victim <- field[String](d, "victimId")
-            weapon <- field[String](d, "weapon")
-            distance <- field[Double](d, "distanceM")
-            assists <- field[List[String]](d, "assistIds")
-          yield PlayerEliminated(m, p, victim, weapon, distance, assists)
-        case "ITEM_PICKED" =>
+            powerup <- field[String](d, "powerup")
+            duration <- field[Long](d, "durationMs")
+          yield PowerupPicked(m, p, powerup, duration)
+        case "LEVEL_UP" =>
           for
-            item <- field[String](d, "itemId")
-            itemType <- field[String](d, "itemType")
-          yield ItemPicked(m, p, item, itemType)
-        case "OBJECTIVE_CAPTURED" =>
+            level <- field[Int](d, "level")
+            speed <- field[Double](d, "speed")
+          yield LevelUp(m, p, level, speed)
+        case "SNAKE_DIED" =>
           for
-            objective <- field[String](d, "objectiveId")
-            team <- field[String](d, "teamId")
-          yield ObjectiveCaptured(m, p, objective, team)
-        case "PLAYER_RESPAWNED" => Some(PlayerRespawned(m, p))
+            cause <- field[String](d, "cause")
+            length <- field[Int](d, "length")
+            lives <- field[Int](d, "livesLeft")
+          yield SnakeDied(m, p, cause, length, lives)
+        case "PLAYER_RESPAWNED" => field[Int](d, "livesLeft").map(PlayerRespawned(m, p, _))
         case _                  => None
     }
+
+  def toBlackjack(e: Event, start: Instant): Option[BlackjackEvent] =
+    import BlackjackEvent.*
+    val d = e.data
+    val m = meta(e, start)
+    // Events of the house have no player; the others need one.
+    def player[A](f: String => Option[A]): Option[A] = e.playerId.flatMap(f)
+    e.eventType match
+      case "ROUND_STARTED" => field[Int](d, "round").map(RoundStarted(m, _))
+      case "DEALER_CARD" =>
+        for
+          round <- field[Int](d, "round")
+          card <- field[String](d, "card")
+          hidden <- field[Boolean](d, "hidden")
+          value <- field[Int](d, "dealerValue")
+        yield DealerCard(m, round, card, hidden, value)
+      case "BET_PLACED" =>
+        player(p =>
+          for
+            round <- field[Int](d, "round")
+            amount <- field[Long](d, "amount")
+            before <- field[Long](d, "chipsBefore")
+          yield BetPlaced(m, p, round, amount, before)
+        )
+      case "CARD_DEALT" =>
+        player(p =>
+          for
+            round <- field[Int](d, "round")
+            card <- field[String](d, "card")
+            value <- field[Int](d, "handValue")
+          yield CardDealt(m, p, round, card, value)
+        )
+      case "DECISION" =>
+        player(p =>
+          for
+            action <- e.action
+            round <- field[Int](d, "round")
+            value <- field[Int](d, "handValue")
+          yield Decision(m, p, action, round, value)
+        )
+      case "BUST" =>
+        player(p =>
+          for
+            round <- field[Int](d, "round")
+            value <- field[Int](d, "handValue")
+          yield Bust(m, p, round, value)
+        )
+      case "BLACKJACK" => player(p => field[Int](d, "round").map(Blackjack(m, p, _)))
+      case "HAND_RESULT" =>
+        player(p =>
+          for
+            round <- field[Int](d, "round")
+            result <- field[String](d, "result")
+            payout <- field[Long](d, "payout")
+            chips <- field[Long](d, "chips")
+          yield HandResult(m, p, round, result, payout, chips)
+        )
+      case _ => None
