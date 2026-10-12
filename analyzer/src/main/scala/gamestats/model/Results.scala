@@ -67,17 +67,21 @@ final case class PlayerGameStats(
 
 final case class PlayerProfile(playerId: String, games: List[PlayerGameStats])
 
+/** winPct is % of matches won (placement 1). */
 final case class LeaderboardEntry(
     rank: Int,
     playerId: String,
     matches: Int,
     wins: Int,
+    winPct: Double,
     avgMetric: Option[Double]
 )
 
+/** singlePlayer says how entries are ordered: by the metric (true) or by % of wins (false). */
 final case class Leaderboard(
     gameId: String,
     metric: Option[String],
+    singlePlayer: Boolean,
     entries: List[LeaderboardEntry]
 )
 

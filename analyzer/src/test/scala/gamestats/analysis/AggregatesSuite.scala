@@ -129,19 +129,79 @@ class AggregatesSuite extends munit.FunSuite:
     assertEquals(Aggregates.player(all, "nobody"), None)
   }
 
-  test("leaderboard: wins first, then the metric, then the id") {
-    // trivia wins: p-sofi 1 (avg 65), p-ana 1 (avg 60), p-luis 0 (avg 85)
+  test("leaderboard of a game of several players: % of matches won, then the metric") {
+    // trivia: p-sofi 1 of 2 = 50 %, p-ana 1 of 3 = 33.3 %, p-luis 0 of 3 = 0 %
     val board = Aggregates.leaderboard(all, "trivia", 20)
-    assertEquals(board.metric, Some("correctPct"))
+    assertEquals((board.metric, board.singlePlayer), (Some("correctPct"), false))
     assertEquals(
-      board.entries.map(e => (e.rank, e.playerId, e.wins)),
-      List((1, "p-sofi", 1), (2, "p-ana", 1), (3, "p-luis", 0))
+      board.entries.map(e => (e.rank, e.playerId, e.matches, e.wins, e.winPct)),
+      List((1, "p-sofi", 2, 1, 50.0), (2, "p-ana", 3, 1, 33.3), (3, "p-luis", 3, 0, 0.0))
     )
     // luis has no metric in the partial match: avg over the two that have it
     assertEquals(board.entries.find(_.playerId == "p-luis").flatMap(_.avgMetric), Some(85.0))
     assertEquals(Aggregates.leaderboard(all, "trivia", 1).entries.size, 1)
-    assertEquals(Aggregates.leaderboard(all, "blackjack", 20).metric, Some("netGain"))
     assertEquals(Aggregates.leaderboard(all, "card-duel", 20).entries, Nil)
+  }
+
+  test("more wins in total do not beat a better % of wins") {
+    // p-kev wins 3 of 6 tables (50 %), p-dani 2 of 2 (100 %): p-dani is first with fewer wins
+    val tables =
+      (1 to 6).toList.map(i =>
+        analysis(
+          s"bj-k$i",
+          "blackjack",
+          i,
+          List(stats("p-kev", Some(if i <= 3 then 1 else 2), gain(0)))
+        )
+      ) ++ (1 to 2).toList.map(i =>
+        analysis(s"bj-d$i", "blackjack", 10 + i, List(stats("p-dani", Some(1), gain(0))))
+      )
+    val board = Aggregates.leaderboard(tables, "blackjack", 20)
+    assertEquals((board.metric, board.singlePlayer), (Some("netGain"), false))
+    assertEquals(
+      board.entries.map(e => (e.playerId, e.wins, e.winPct)),
+      List(("p-dani", 2, 100.0), ("p-kev", 3, 50.0))
+    )
+  }
+
+  test("on the same % of wins, the metric decides, then more matches played") {
+    // p-kev and p-dani both win 1 of 2 in all: p-kev has the higher net gain (200 against 50)
+    assertEquals(
+      Aggregates
+        .leaderboard(all, "blackjack", 20)
+        .entries
+        .map(e => (e.playerId, e.winPct, e.avgMetric)),
+      List(("p-kev", 50.0, Some(200.0)), ("p-dani", 50.0, Some(50.0)))
+    )
+  }
+
+  /** A snake match: one player, always first. */
+  def snake(id: String, player: String, length: Int): MatchAnalysis =
+    analysis(id, "snake", 0, List(stats(player, Some(1), "maxLength" -> Json.fromInt(length))))
+
+  test("leaderboard of a single player game: the metric, then more matches played") {
+    val matches = List(
+      snake("sn-1", "p-mari", 20),
+      snake("sn-2", "p-mari", 18),
+      snake("sn-3", "p-mari", 22),
+      snake("sn-4", "p-rafa", 23), // one match, the best average: first
+      snake("sn-5", "p-lu", 20), // average 20, 1 match
+      snake("sn-6", "p-noe", 19),
+      snake("sn-7", "p-noe", 21) // average 20, 2 matches: before p-lu
+    )
+    val board = Aggregates.leaderboard(matches, "snake", 20)
+    assertEquals((board.metric, board.singlePlayer), (Some("maxLength"), true))
+    // p-mari has the most wins (3) but an average of 20, like p-noe and p-lu; with 3 matches she
+    // goes first of the three
+    assertEquals(
+      board.entries.map(e => (e.rank, e.playerId, e.matches, e.avgMetric)),
+      List(
+        (1, "p-rafa", 1, Some(23.0)),
+        (2, "p-mari", 3, Some(20.0)),
+        (3, "p-noe", 2, Some(20.0)),
+        (4, "p-lu", 1, Some(20.0))
+      )
+    )
   }
 
   test("game summary: G4 abandonment rate, average duration and the game's own metrics") {

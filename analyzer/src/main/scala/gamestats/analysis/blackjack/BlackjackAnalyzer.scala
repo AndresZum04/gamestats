@@ -17,6 +17,9 @@ object BlackjackAnalyzer extends ComposedAnalyzer[BlackjackEvent]:
   protected def toTyped(e: Event, start: Instant): Option[BlackjackEvent] =
     Typed.toBlackjack(e, start)
 
+  /** 2 to 4 players at the same table; first place is the one with the most chips. */
+  override val ranking: Ranking = Ranking(Some("netGain"), singlePlayer = false)
+
   override protected def playerMetrics(ctx: MatchContext[BlackjackEvent]): PlayerMetrics =
     import BlackjackStats.*
     val events = ctx.events

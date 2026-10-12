@@ -133,14 +133,18 @@ Cada jugador guarda también `chipsByRound` (fichas después de cada mano), que 
 Archivo: `analysis/Aggregates.scala`. Las rutas leen todos los resultados guardados una sola vez y se los pasan a estas funciones.
 
 - Perfil de un jugador (`GET /api/v1/players/{id}`): partidas jugadas, victorias y promedio de la métrica del juego, por cada juego. Se arma con `groupBy(_.playerId)` y un `foldLeft` hacia un `Record` inmutable.
-- Leaderboard (`GET /api/v1/games/{id}/leaderboard`): victoria es el primer lugar (`placement` 1) en los tres juegos. Ordena por victorias y desempata por la métrica del juego: % de aciertos (trivia), largo máximo (snake) o ganancia neta (blackjack).
+- Leaderboard (`GET /api/v1/games/{id}/leaderboard`): victoria es el primer lugar (`placement` 1) en los tres juegos, pero el total de victorias nunca decide el orden, porque crece con las partidas jugadas y favorecería a quien juega más. Cada analizador declara un `Ranking` con su métrica y si el juego es de un jugador (`singlePlayer`):
+  - Juego de varios jugadores (trivia, blackjack): % de partidas ganadas, después la métrica del juego (% de aciertos o ganancia neta promedio), después más partidas jugadas.
+  - Juego de un jugador (snake): cada partida termina en victoria, así que se ordena por la métrica (largo máximo promedio) y, en empate, por más partidas jugadas.
+
+  Cada entrada trae `matches`, para que se vea de cuántas partidas sale cada promedio. No hay un mínimo de partidas: un jugador con una sola partida puede quedar primero, y la columna de partidas lo deja a la vista.
 - Resumen del juego (`GET /api/v1/games/{id}/summary`): partidas, duración promedio, G4, patrones por tipo y `gameMetrics`, que calcula el analizador de cada juego sobre todas sus partidas (T5 en trivia, S5 en snake).
 
 ```json
-{"gameId": "blackjack", "metric": "netGain", "entries": [
-  {"rank": 1, "playerId": "p-pablo", "matches": 1, "wins": 1, "avgMetric": 2100.0},
-  {"rank": 2, "playerId": "p-gabo", "matches": 2, "wins": 1, "avgMetric": 350.0},
-  {"rank": 3, "playerId": "p-mari", "matches": 2, "wins": 1, "avgMetric": 250.0}]}
+{"gameId": "blackjack", "metric": "netGain", "singlePlayer": false, "entries": [
+  {"rank": 1, "playerId": "p-pablo", "matches": 1, "wins": 1, "winPct": 100.0, "avgMetric": 2100.0},
+  {"rank": 2, "playerId": "p-seba", "matches": 1, "wins": 1, "winPct": 100.0, "avgMetric": -90.0},
+  {"rank": 3, "playerId": "p-gabo", "matches": 2, "wins": 1, "winPct": 50.0, "avgMetric": 350.0}]}
 ```
 
 ## Patrones

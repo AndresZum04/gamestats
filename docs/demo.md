@@ -108,7 +108,7 @@ En `http://localhost:8081/dashboard`:
 1. Pestaña Trivia, abrir `tv-scn-comeback`. Mostrar los aciertos por jugador y el % por categoría, la pregunta más difícil y el patrón P2: p-luis iba solo en el último lugar después de la pregunta 2 y ganó. En el resumen, la categoría más difícil del juego (T5).
 2. Pestaña Snake, abrir `sn-scn-frenzy`. Mostrar el gráfico del largo con las tres muertes marcadas, las frutas por vida (12, 6, 6) y, en el resumen, el récord de largo y la causa de muerte más común (S5).
 3. Pestaña Blackjack, abrir `bj-scn-allin`. Mostrar el gráfico de fichas por ronda: p-gabo baja de 1000 a 700 en tres rondas, apuesta todo y sube a 1400. Mostrar la ganancia de la casa y la apuesta más alta (B5).
-4. Mostrar el leaderboard de cada juego (victoria = primer lugar, con su desempate) y los filtros de patrones recientes.
+4. Mostrar el leaderboard de cada juego y los filtros de patrones recientes. En Trivia y Blackjack se ordena por % de partidas ganadas; en Snake, que es de un jugador, por largo máximo promedio, porque ahí cada partida es una victoria. La columna Partidas muestra de cuántas partidas sale cada promedio.
 
 Qué decir:
 - Todo lo que se ve sale de funciones puras en Scala. El tablero se refresca cada 5 s sin recargar la página.

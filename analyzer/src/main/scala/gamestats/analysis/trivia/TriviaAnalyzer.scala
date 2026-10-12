@@ -16,6 +16,9 @@ object TriviaAnalyzer extends ComposedAnalyzer[TriviaEvent]:
 
   protected def toTyped(e: Event, start: Instant): Option[TriviaEvent] = Typed.toTrivia(e, start)
 
+  /** 2 to 6 players answer the same questions. */
+  override val ranking: Ranking = Ranking(Some("correctPct"), singlePlayer = false)
+
   override protected def playerMetrics(ctx: MatchContext[TriviaEvent]): PlayerMetrics =
     import TriviaStats.*
     val questions = ctx.startNumber("questions").fold(defaultQuestions)(_.toInt)

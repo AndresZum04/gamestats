@@ -145,11 +145,11 @@ const COLUMNS = {
     ["avgTurnMs", "Turno prom.", "secs"], ["maxTurnMs", "Turno máx.", "secs"], ["disconnections", "Desconex.", "int"],
   ],
 };
-// Tiebreak metric of each leaderboard: [header, format, note]
+// Metric of each leaderboard: [header, format, name in the note]
 const BOARD_METRICS = {
-  correctPct: ["% aciertos prom.", "pct", "Desempate por % de aciertos promedio."],
-  maxLength: ["Largo máx. prom.", "dec1", "Desempate por largo máximo promedio."],
-  netGain: ["Ganancia neta prom.", "signed", "Desempate por ganancia neta promedio."],
+  correctPct: ["% aciertos prom.", "pct", "% de aciertos promedio"],
+  maxLength: ["Largo máx. prom.", "dec1", "largo máximo promedio"],
+  netGain: ["Ganancia neta prom.", "signed", "ganancia neta promedio"],
 };
 const DEATH_CAUSES = { WALL: "Pared", SELF: "Se mordió", OBSTACLE: "Obstáculo" };
 const REFRESH_MS = 5000;
@@ -266,14 +266,20 @@ function renderSummary(s) {
 function renderLeaderboard(board) {
   const table = $("leaderboard");
   const metric = board && BOARD_METRICS[board.metric];
-  $("board-note").textContent = `Victoria = primer lugar.${metric ? " " + metric[2] : ""}`;
-  if (!board || board.entries.length === 0) return emptyRow(table, "Sin datos todavía.", 5);
-  const head = el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Jugador"),
-    el("th", { class: "num" }, "Victorias"), el("th", { class: "num" }, "Partidas"),
-    metric ? el("th", { class: "num" }, metric[0]) : null));
+  const single = Boolean(board && board.singlePlayer);
+  // Total wins grow with the matches played, so they never decide the order (see Aggregates.leaderboard).
+  $("board-note").textContent = single
+    ? `Juego de un jugador: cada partida es una victoria, así que se ordena por ${metric ? metric[2] : "partidas"} y, en empate, por partidas jugadas.`
+    : `Victoria = primer lugar. Se ordena por % de partidas ganadas; en empate, por ${metric ? metric[2] + " y después por " : ""}partidas jugadas.`;
+  if (!board || board.entries.length === 0) return emptyRow(table, "Sin datos todavía.", 6);
+  const num = (text) => el("th", { class: "num" }, text);
+  const head = el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Jugador"), num("Partidas"),
+    single ? null : num("Victorias"), single ? null : num("% victorias"),
+    metric ? num(metric[0]) : null));
   const rows = board.entries.map((e) => el("tr", {},
-    el("td", {}, e.rank), el("td", {}, e.playerId), el("td", { class: "num" }, e.wins),
-    el("td", { class: "num" }, e.matches),
+    el("td", {}, e.rank), el("td", {}, e.playerId), el("td", { class: "num" }, e.matches),
+    single ? null : el("td", { class: "num" }, e.wins),
+    single ? null : el("td", { class: "num" }, fmt(e.winPct, "pct")),
     metric ? el("td", { class: "num" }, fmt(e.avgMetric, metric[1])) : null));
   table.replaceChildren(head, el("tbody", {}, rows));
 }

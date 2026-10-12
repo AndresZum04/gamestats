@@ -15,6 +15,9 @@ object SnakeAnalyzer extends ComposedAnalyzer[SnakeEvent]:
 
   protected def toTyped(e: Event, start: Instant): Option[SnakeEvent] = Typed.toSnake(e, start)
 
+  /** One person per match: every match is a win, so it is ranked by its longest snake. */
+  override val ranking: Ranking = Ranking(Some("maxLength"), singlePlayer = true)
+
   override protected def playerMetrics(ctx: MatchContext[SnakeEvent]): PlayerMetrics =
     import SnakeStats.*
     val events = ctx.events

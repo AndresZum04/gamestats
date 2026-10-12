@@ -20,6 +20,24 @@ trait GameAnalyzer:
     */
   def gameMetrics(matches: List[MatchAnalysis]): Map[String, Json] = Map.empty
 
+  /** How the game's leaderboard is ordered; see [[Ranking]]. */
+  def ranking: Ranking = Ranking.default
+
+/** How a game's leaderboard is ordered.
+  *
+  * @param metric
+  *   the game's own metric (higher is better), averaged over the player's matches
+  * @param singlePlayer
+  *   every match is played by one person, so every match ends in a win and counting wins is
+  *   counting matches played. Such a game is ranked by the metric, then by matches played. Any
+  *   other game is ranked by % of matches won, then by the metric, then by matches played.
+  */
+final case class Ranking(metric: Option[String], singlePlayer: Boolean)
+
+object Ranking:
+  /** A game without its own analyzer: several players, no metric. */
+  val default: Ranking = Ranking(None, singlePlayer = false)
+
 /** A pattern detector reads the context of a match and returns what it found (possibly nothing).
   */
 type PatternDetector[E] = MatchContext[E] => List[PatternMatch]

@@ -8,11 +8,8 @@ import io.circe.Json
   */
 object Aggregates:
 
-  /** Metric used to break ties in each game's leaderboard (higher is better). Games without one are
-    * ranked by wins only.
-    */
-  val tiebreakMetric: Map[String, String] =
-    Map("trivia" -> "correctPct", "snake" -> "maxLength", "blackjack" -> "netGain")
+  /** The game's metric, declared by its analyzer (None for a game without one). */
+  def gameMetric(gameId: String): Option[String] = AnalyzerRegistry.forGame(gameId).ranking.metric
 
   /** A win is first place, in every game. */
   def isWin(placement: Option[Int]): Boolean = placement.contains(1)
@@ -56,6 +53,9 @@ object Aggregates:
         metricSum + metric.getOrElse(0.0),
         metricCount + metric.size
       )
+    def winPct: Double =
+      if matches == 0 then 0.0
+      else BigDecimal(100.0 * wins / matches).setScale(1, BigDecimal.RoundingMode.HALF_UP).toDouble
     def avg: Option[Double] =
       Option.when(metricCount > 0)(
         BigDecimal(metricSum / metricCount).setScale(3, BigDecimal.RoundingMode.HALF_UP).toDouble
@@ -66,7 +66,7 @@ object Aggregates:
 
   /** Every (player, match) of one game, folded per player into a Record. */
   def records(all: List[MatchAnalysis], gameId: String): Map[String, Record] =
-    val metric = tiebreakMetric.get(gameId)
+    val metric = gameMetric(gameId)
     all
       .filter(_.gameId == gameId)
       .flatMap(_.players)
@@ -88,19 +88,29 @@ object Aggregates:
         games.flatMap { g =>
           records(all, g)
             .get(playerId)
-            .map(r => PlayerGameStats(g, r.matches, r.wins, tiebreakMetric.get(g), r.avg))
+            .map(r => PlayerGameStats(g, r.matches, r.wins, gameMetric(g), r.avg))
         }
       )
     )
 
-  /** Leaderboard of a game: wins, then the tiebreak metric, then id. */
+  /** Leaderboard of a game, ordered as its analyzer's [[Ranking]] says.
+    *
+    * Total wins are never the first key: they grow with the matches played, so they would favor
+    * whoever plays more. A game of several players is ranked by % of matches won; a single player
+    * game, where every match is a win, by its metric. Then the metric (players without it go last),
+    * then more matches played, then the id.
+    */
   def leaderboard(all: List[MatchAnalysis], gameId: String, limit: Int): Leaderboard =
+    val ranking = AnalyzerRegistry.forGame(gameId).ranking
     val entries = records(all, gameId).toList
-      .sortBy((p, r) => (-r.wins, -r.avg.getOrElse(Double.MinValue), p))
+      .sortBy((p, r) =>
+        val winKey = if ranking.singlePlayer then 0.0 else -r.winPct
+        (winKey, r.avg.isEmpty, -r.avg.getOrElse(0.0), -r.matches, p)
+      )
       .take(limit)
       .zipWithIndex
-      .map { case ((p, r), i) => LeaderboardEntry(i + 1, p, r.matches, r.wins, r.avg) }
-    Leaderboard(gameId, tiebreakMetric.get(gameId), entries)
+      .map { case ((p, r), i) => LeaderboardEntry(i + 1, p, r.matches, r.wins, r.winPct, r.avg) }
+    Leaderboard(gameId, ranking.metric, ranking.singlePlayer, entries)
 
   /** GET /api/v1/games/{gameId}/summary: G4, matches, average duration and the statistics of the
     * game's analyzer over every match. None if the game has no stored matches.
