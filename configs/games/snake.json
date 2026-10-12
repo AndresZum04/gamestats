@@ -1,0 +1,26 @@
+{
+  "gameId": "snake",
+  "versions": ["1.0"],
+  "events": {
+    "FOOD_EATEN": {
+      "playerRequired": true,
+      "data": { "foodType": "string", "length": "number", "points": "number" }
+    },
+    "POWERUP_PICKED": {
+      "playerRequired": true,
+      "data": { "powerup": "string", "durationMs": "number" }
+    },
+    "LEVEL_UP": {
+      "playerRequired": true,
+      "data": { "level": "number", "speed": "number" }
+    },
+    "SNAKE_DIED": {
+      "playerRequired": true,
+      "data": { "cause": "string", "length": "number", "livesLeft": "number" }
+    },
+    "PLAYER_RESPAWNED": {
+      "playerRequired": true,
+      "data": { "livesLeft": "number" }
+    }
+  }
+}

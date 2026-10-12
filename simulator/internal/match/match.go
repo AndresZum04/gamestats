@@ -153,3 +153,20 @@ const (
 
 // Ms converts milliseconds to a Duration.
 func Ms(ms int) time.Duration { return time.Duration(ms) * time.Millisecond }
+
+// Results builds the results of MATCH_FINISHED: players by score, highest
+// first, with equal scores sharing a placement (1, 1, 3). Each entry also
+// carries the score under key.
+func Results(players []string, score map[string]int, key string) []any {
+	order := append([]string{}, players...)
+	sort.SliceStable(order, func(i, j int) bool { return score[order[i]] > score[order[j]] })
+	out := make([]any, len(order))
+	for i, p := range order {
+		placement := i + 1
+		if i > 0 && score[p] == score[order[i-1]] {
+			placement = out[i-1].(map[string]any)["placement"].(int)
+		}
+		out[i] = map[string]any{"playerId": p, "placement": placement, key: score[p]}
+	}
+	return out
+}

@@ -50,13 +50,13 @@ title "3. Simulador en vivo: varias partidas en paralelo escribiendo en events/"
 echo "Abrí $ANALYZER/dashboard para verlas aparecer."
 start=$(count_matches)
 docker compose --profile demo run --rm simulator | sed 's/^/   /'
-wait_for $((start + 16))
+wait_for $((start + 18))
 
 title "Partidas por juego"
 curl -fsS "$ANALYZER/api/v1/matches?limit=1000" |
   jqx -r 'group_by(.gameId)[] | "  \(.[0].gameId): \(length) partidas"'
 
-for game in racing-pro arena-clash; do
+for game in trivia snake blackjack; do
   title "Top 3 de $game"
   # $m es una variable de jq, no de bash: las comillas simples son a propósito.
   # shellcheck disable=SC2016

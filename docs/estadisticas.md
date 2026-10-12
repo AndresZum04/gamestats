@@ -1,21 +1,23 @@
 # Estadísticas y patrones
 
-GameStats calcula 19 estadísticas y detecta 6 patrones. Todo vive en `analyzer/src/main/scala/gamestats/analysis/` y son funciones puras: reciben datos inmutables y devuelven datos nuevos, sin `var`, sin colecciones mutables y sin efectos.
+GameStats calcula 21 estadísticas y detecta 6 patrones. Todo vive en `analyzer/src/main/scala/gamestats/analysis/` y son funciones puras: reciben datos inmutables y devuelven datos nuevos, sin `var`, sin colecciones mutables y sin efectos.
 
-Los ejemplos de salida son reales. Salen de cargar `data/samples/demo-small.jsonl` y consultar la API.
+Las estadísticas son G1 a G6 (generales), T1 a T5 (trivia), S1 a S5 (snake) y B1 a B5 (blackjack). Los ejemplos de salida son reales: salen de cargar `data/samples/demo-small.jsonl` y consultar la API.
 
 ## Cómo cumple el enunciado
 
 | Mínimo del enunciado | Dónde |
 | --- | --- |
-| Estadística agregada por jugador | R1 a R4, A1, A2 |
-| Estadística agregada por partida | G1, G2, R5, A3 |
-| Estadística que combina tipos de eventos distintos | R6, R7, A4, A5 |
+| Estadística agregada por jugador | T1, T2, S1, S2, S3, B1, B2, B3 |
+| Estadística agregada por partida | G1, G2, T4, B5 |
+| Estadística que combina tipos de eventos distintos | T3, S4, B4 |
 | Regla basada en secuencia o combinación de eventos | P1 a P6 |
+
+Además hay estadísticas de todo el juego, sobre todas sus partidas: G4, T5 y S5.
 
 ## Generales (todos los juegos)
 
-Archivo: `analysis/GenericStats.scala`. Las calcula `GenericAnalyzer`, que es lo que recibe un juego sin analizador propio, como `chess-lite`. Los analizadores de carreras y combate también las incluyen.
+Archivo: `analysis/GenericStats.scala`. Las calcula `GenericAnalyzer`, que es lo que recibe un juego sin analizador propio. Los analizadores de trivia, snake y blackjack también las incluyen.
 
 | ID | Nivel | Qué calcula | Cómo | Operaciones |
 | --- | --- | --- | --- | --- |
@@ -26,87 +28,119 @@ Archivo: `analysis/GenericStats.scala`. Las calcula `GenericAnalyzer`, que es lo
 | G5 | jugador | Puntaje final y racha | Último `total` de `SCORE_CHANGED` y la racha más larga de `delta` positivos seguidos | `groupBy`, `lastOption`, `foldLeft` |
 | G6 | jugador | Tiempo por turno | Promedio y máximo de `durationMs` en `TURN_ENDED`; si el jugador no tiene turnos, se omite | `collect`, `groupBy`, `max` |
 
-Ejemplo (`cl-0001`, ajedrez):
+Ejemplo (`bj-0001`, blackjack, que usa `TURN_STARTED` y `TURN_ENDED` en cada mano):
 
 ```json
-"eventsByType": {"MOVE": 44, "TURN_STARTED": 44, "TURN_ENDED": 44, "SCORE_CHANGED": 8, "PLAYER_JOINED": 2, "MATCH_STARTED": 1, "MATCH_FINISHED": 1},
-"durationMs": 506299,
-"players": [{"playerId": "p-fer", "placement": 1, "metrics": {
-  "disconnections": 0, "awayMs": 0, "left": false,
-  "finalScore": 24.0, "longestScoreStreak": 6,
-  "turns": 22, "avgTurnMs": 10580.2, "maxTurnMs": 20360 }}]
+"eventsByType": {"CARD_DEALT": 110, "DECISION": 53, "BET_PLACED": 40, "HAND_RESULT": 40, "TURN_STARTED": 40,
+  "TURN_ENDED": 40, "DEALER_CARD": 31, "BUST": 11, "ROUND_STARTED": 10, "PLAYER_JOINED": 4, "BLACKJACK": 2,
+  "MATCH_STARTED": 1, "MATCH_FINISHED": 1},
+"durationMs": 265184,
+"players": [{"playerId": "p-pablo", "placement": 1, "metrics": {
+  "disconnections": 0, "awayMs": 0, "left": false, "turns": 10, "avgTurnMs": 3726.3, "maxTurnMs": 7391, … }}]
 ```
 
-G4 en `GET /api/v1/games/arena-clash/summary`: `"playerEntries": 60, "playersLeft": 1, "abandonmentRate": 0.017`.
+G4 en `GET /api/v1/games/blackjack/summary`: `"playerEntries": 11, "playersLeft": 1, "abandonmentRate": 0.091`. En blackjack un jugador sale con `PLAYER_LEFT` cuando se queda sin fichas.
 
-## Carreras (`racing-pro`)
+## Trivia
 
-Archivo: `analysis/racing/RacingStats.scala`. Cada estadística es una función con nombre y tipo explícito.
+Archivo: `analysis/trivia/TriviaStats.scala`. Cada estadística es una función con nombre y tipo explícito. La cantidad de preguntas sale de `MATCH_STARTED.questions` (10 si falta).
 
-| ID | Nivel | Qué calcula | Cómo | Operaciones |
+| ID | Nivel | Qué calcula | Fórmula | Operaciones |
 | --- | --- | --- | --- | --- |
-| R1 | jugador | Mejor vuelta, promedio y desviación estándar | Sobre `lapTimeMs` de sus `LAP_COMPLETED`. Desviación poblacional; suma y suma de cuadrados en una sola pasada | `collect`, `groupBy`, `foldLeft` |
-| R2 | jugador | Índice de consistencia | `1 - desviación / promedio`, a 3 decimales | `lapStats andThen (_.map(consistency))` |
-| R3 | jugador | Posiciones ganadas | Posición tras la vuelta 1 menos el puesto final. Se omite en lotes `PARTIAL` | `collectFirst`, `for` sobre `Option` |
-| R4 | jugador | Adelantamientos | `POSITION_CHANGED` con `action = OVERTAKE` | `collect`, `groupBy`, `size` |
-| R5 | partida | Resumen de carrera | Vuelta rápida (piloto y tiempo), adelantamientos, choques y segundos de penalización | `minByOption`, `foldLeft` |
-| R6 | jugador | Impacto de incidentes | Por cada vuelta con `CRASH` o `PENALTY`: su tiempo menos el promedio de las vueltas limpias del piloto, más los segundos de penalización | `collect`, `groupBy`, `sum` |
-| R7 | jugador | Efecto de las paradas | Promedio de las 3 vueltas después de cada `PIT_STOP` menos el de las 3 anteriores; la vuelta de la parada no cuenta. Negativo = mejoró | `span`, `take`, `takeRight` |
+| T1 | jugador | Aciertos, errores, sin responder y % de aciertos | `ANSWER_SUBMITTED` con `correct` verdadero o falso, `ANSWER_TIMEOUT`; % = aciertos / preguntas × 100 | `foldLeft` hacia un `Answers` inmutable |
+| T2 | jugador | Tiempo de respuesta | Promedio de `responseMs` de todas sus respuestas (los timeouts no tienen tiempo) y el menor `responseMs` con `correct = true` | `groupBy`, `filter`, `minOption` |
+| T3 | jugador | % de aciertos por categoría | Une cada respuesta (o timeout) con su `QUESTION_SHOWN` por `questionId` para saber la categoría; aciertos / intentos de esa categoría | `toMap` como índice, `flatMap`, `groupMapReduce` |
+| T4 | partida | Resumen | Pregunta más difícil (menor `correctCount`; en empate, la de mayor `number`), jugador más rápido (menor promedio de `responseMs` en aciertos) y % de aciertos de la partida | `minByOption`, `groupBy` |
+| T5 | juego | Categoría más difícil | Suma aciertos e intentos por categoría sobre todas las partidas y toma el menor %. Por partida se guarda `categoryTotals` | `groupMapReduce`, `minByOption` |
 
-Ejemplo (`rp-scn-comeback`, p-ana, que chocó en la vuelta 2):
+Ejemplo (`tv-scn-streak`, p-ana):
 
 ```json
-{"playerId": "p-ana", "placement": 2, "metrics": {
-  "bestLapMs": 88000, "avgLapMs": 91500.0, "lapStdDevMs": 6652.1, "consistency": 0.927,
-  "positionsGained": -1, "overtakes": 5, "incidentImpactMs": 21667 }}
-"matchMetrics": {"fastestLapMs": 88000, "fastestLapPlayer": "p-ana", "overtakes": 12, "crashes": 1, "penaltySeconds": 0.0}
+{"playerId": "p-ana", "placement": 1, "metrics": {
+  "correct": 7, "wrong": 3, "timeouts": 0, "correctPct": 70.0,
+  "avgResponseMs": 4350.0, "fastestCorrectMs": 3300,
+  "correctPctByCategory": {"CIENCIA": 66.7, "DEPORTES": 66.7, "GEOGRAFIA": 0.0, "HISTORIA": 100.0},
+  "finalScore": 1050.0, "longestScoreStreak": 6 }}
+"matchMetrics": {"hardestQuestion": {"questionId": "q-021", "number": 8, "correctCount": 0},
+  "fastestPlayer": {"playerId": "p-ana", "avgCorrectMs": 4242.9}, "matchCorrectPct": 63.3, …}
 ```
 
-El choque le costó 21.7 s (R6). Su consistencia es baja (0.927) justamente por esa vuelta. R7 en `rp-0001`: `"pitEffectMs": -1157.3` para p-pablo, que después de parar fue 1.2 s más rápido por vuelta.
+T5 en `GET /api/v1/games/trivia/summary`:
 
-Cada piloto guarda también `lapTimesMs`, la serie de sus vueltas, que el tablero usa para el gráfico.
+```json
+"gameMetrics": {"hardestCategory": {"category": "DEPORTES", "correctPct": 46.4},
+  "correctPctByCategory": {"CIENCIA": 48.8, "DEPORTES": 46.4, "ENTRETENIMIENTO": 46.9, "GEOGRAFIA": 50.0, "HISTORIA": 54.4}}
+```
 
-## Combate (`arena-clash`)
+## Snake
 
-Archivo: `analysis/arena/ArenaStats.scala`.
+Archivo: `analysis/snake/SnakeStats.scala`. Una vida va desde el inicio (o una reaparición) hasta un `SNAKE_DIED`; la función `lives` parte las frutas de un jugador por vida y la usan S2, S4 y P3.
 
-| ID | Nivel | Qué calcula | Cómo | Operaciones |
+| ID | Nivel | Qué calcula | Fórmula | Operaciones |
 | --- | --- | --- | --- | --- |
-| A1 | jugador | Eliminaciones, muertes, asistencias, K/D | Muertes leídas por `victimId`, asistencias desde `assistIds`. K/D = eliminaciones / max(muertes, 1) | `flatMap`, `groupBy`, `foldLeft` |
-| A2 | jugador | Daño, daño por impacto, % de headshots, eliminación más lejana | Sobre `DAMAGE_DEALT` y `PLAYER_ELIMINATED` | `collect`, `partition`, `maxByOption` |
-| A3 | partida | Resumen | Marcador, equipo ganador, primera sangre, daño por equipo y MVP con puntaje `2 × eliminaciones + asistencias + daño / 100` | `groupBy`, `sortBy`, `headOption` |
-| A4 | jugador | Daño por eliminación | Daño total entre eliminaciones; cruza las dos agrupaciones por jugador | `groupBy`, `flatMap` sobre los pares |
-| A5 | jugador | Conversión de armas | % de `ITEM_PICKED` con `itemType = WEAPON` seguidos de una eliminación del mismo jugador en menos de 30 s | `filter`, `exists` en ventana |
-| A6 | juego | Arma más efectiva | Eliminaciones por `weapon` sobre todas las partidas. Por partida se guarda `killsByWeapon` | `groupBy`, `sortBy` (en `Aggregates.scala`) |
+| S1 | jugador | Largo máximo y frutas | Mayor `length` entre `FOOD_EATEN` y `SNAKE_DIED`; cantidad de `FOOD_EATEN` | `collect`, `maxOption`, `count` |
+| S2 | jugador | Ritmo | Frutas / duración en minutos (G2), y promedio de ms entre frutas seguidas de la misma vida | `sliding(2)` por vida, `Metrics.average` |
+| S3 | jugador | Muertes por causa | `SNAKE_DIED` agrupados por `cause` | `groupMapReduce` |
+| S4 | jugador | Frutas por vida | Parte los `FOOD_EATEN` con los `SNAKE_DIED`: lista por vida y promedio. El promedio se arma componiendo funciones: `lives andThen (_.map(_.size.toDouble)) andThen Metrics.average` | `foldLeft`, `andThen` |
+| S5 | juego | Récord y causa más común | Mayor largo sobre todas las partidas (jugador, partida y largo; en empate, la primera partida) y la causa de muerte más repetida | `minByOption`, `groupMapReduce` |
 
-Ejemplo (`ac-scn-spree`, p-ana):
+Ejemplo (`sn-scn-frenzy`, p-kev):
 
 ```json
-{"playerId": "p-ana", "teamId": "RED", "metrics": {
-  "kills": 10, "deaths": 5, "assists": 0, "kd": 2.0,
-  "damageDealt": 596.0, "avgDamagePerHit": 23.8, "headshotPct": 36.0, "longestKillM": 57.5,
-  "damagePerKill": 59.6 }}
-"matchMetrics": {"score": {"RED": 30, "BLUE": 25}, "winnerTeam": "RED",
-  "firstBlood": {"playerId": "p-ana", "victimId": "p-vale", "atMs": 15000},
-  "mvp": {"playerId": "p-ana", "score": 25.96}, "damageByTeam": {"RED": 1995.0, "BLUE": 1761.0},
-  "killsByWeapon": {"RIFLE": 51, "SMG": 4}}
+{"playerId": "p-kev", "placement": 1, "metrics": {
+  "maxLength": 15, "fruits": 24, "fruitsPerMinute": 11.25, "avgMsBetweenFruits": 4619.0,
+  "deaths": 3, "deathsByCause": {"OBSTACLE": 1, "SELF": 1, "WALL": 1},
+  "fruitsPerLife": [12, 6, 6], "avgFruitsPerLife": 8.0, "finalScore": 250.0, … }}
 ```
 
-A6 en `GET /api/v1/games/arena-clash/summary`: `"mostEffectiveWeapon": {"weapon": "RIFLE", "kills": 241}`.
+S5 en `GET /api/v1/games/snake/summary`:
+
+```json
+"gameMetrics": {"lengthRecord": {"playerId": "p-sofi", "matchId": "sn-0002", "length": 16},
+  "mostCommonDeathCause": "OBSTACLE", "deathsByCause": {"OBSTACLE": 6, "SELF": 3, "WALL": 3}}
+```
+
+Cada jugador guarda también `lengthSeries` (tiempo y largo de cada fruta y cada muerte), que el tablero usa para el gráfico del largo.
+
+## Blackjack
+
+Archivo: `analysis/blackjack/BlackjackStats.scala`. Las fichas iniciales salen de `MATCH_STARTED.startingChips` (1000 si falta). La casa no es un jugador: sus eventos no tienen `playerId`.
+
+| ID | Nivel | Qué calcula | Fórmula | Operaciones |
+| --- | --- | --- | --- | --- |
+| B1 | jugador | % de victoria | `WIN` / manos jugadas × 100. Un `PUSH` cuenta como mano, no como victoria | `groupBy`, `count` |
+| B2 | jugador | Ganancia neta, mejor y peor mano | Fichas de la última `HAND_RESULT` − fichas iniciales; mayor y menor `payout` | `maxBy`, `max`, `min` |
+| B3 | jugador | Busts y blackjacks | Cantidad de `BUST` y de `BLACKJACK` | `foldLeft` |
+| B4 | jugador | Efectividad al doblar | Une cada `DECISION` con `action = DOUBLE` con la `HAND_RESULT` del mismo (jugador, ronda): % ganadas y ganancia neta de esas manos | `toMap` por `(playerId, round)`, `flatMap` |
+| B5 | partida | Resumen de la mesa | Ganancia de la casa (suma de `payout` con el signo invertido), rondas en que el dealer se pasó (su último `DEALER_CARD` de la ronda tiene `dealerValue` > 21) y apuesta más alta | `groupBy(_.round)`, `maxBy`, `minByOption` |
+
+Ejemplo (`bj-0001`, p-diego y la partida):
+
+```json
+{"playerId": "p-diego", "placement": 2, "metrics": {
+  "hands": 10, "wins": 5, "winPct": 50.0,
+  "netGain": 970, "bestHand": 950, "worstHand": -100,
+  "busts": 2, "blackjacks": 0,
+  "doubles": 1, "doubleWinPct": 100.0, "doubleNet": 180, … }}
+"matchMetrics": {"houseGain": -3435, "dealerBusts": 5, "hands": 40,
+  "highestBet": {"playerId": "p-pablo", "round": 8, "amount": 1640}, …}
+```
+
+Cada jugador guarda también `chipsByRound` (fichas después de cada mano), que el tablero usa para el gráfico de fichas.
 
 ## Agregados entre partidas
 
 Archivo: `analysis/Aggregates.scala`. Las rutas leen todos los resultados guardados una sola vez y se los pasan a estas funciones.
 
 - Perfil de un jugador (`GET /api/v1/players/{id}`): partidas jugadas, victorias y promedio de la métrica del juego, por cada juego. Se arma con `groupBy(_.playerId)` y un `foldLeft` hacia un `Record` inmutable.
-- Leaderboard (`GET /api/v1/games/{id}/leaderboard`): ordenado por victorias. En carreras, victoria es el podio y el desempate es la consistencia promedio. En combate, victoria es el equipo ganador y el desempate es el K/D promedio.
-- Resumen del juego (`GET /api/v1/games/{id}/summary`): partidas, duración promedio, G4, A6 y patrones por tipo.
+- Leaderboard (`GET /api/v1/games/{id}/leaderboard`): victoria es el primer lugar (`placement` 1) en los tres juegos. Ordena por victorias y desempata por la métrica del juego: % de aciertos (trivia), largo máximo (snake) o ganancia neta (blackjack).
+- Resumen del juego (`GET /api/v1/games/{id}/summary`): partidas, duración promedio, G4, patrones por tipo y `gameMetrics`, que calcula el analizador de cada juego sobre todas sus partidas (T5 en trivia, S5 en snake).
 
 ```json
-{"gameId": "racing-pro", "metric": "consistency", "entries": [
-  {"rank": 1, "playerId": "p-sofi", "matches": 2, "wins": 2, "avgMetric": 0.984},
-  {"rank": 2, "playerId": "p-luis", "matches": 3, "wins": 2, "avgMetric": 0.963},
-  {"rank": 3, "playerId": "p-ana", "matches": 2, "wins": 2, "avgMetric": 0.955}]}
+{"gameId": "blackjack", "metric": "netGain", "entries": [
+  {"rank": 1, "playerId": "p-pablo", "matches": 1, "wins": 1, "avgMetric": 2100.0},
+  {"rank": 2, "playerId": "p-gabo", "matches": 2, "wins": 1, "avgMetric": 350.0},
+  {"rank": 3, "playerId": "p-mari", "matches": 2, "wins": 1, "avgMetric": 250.0}]}
 ```
 
 ## Patrones
@@ -115,39 +149,39 @@ Un archivo por patrón en `analysis/patterns/`. Cada uno es un `PatternDetector[
 
 | ID | Juego | Patrón | Condición | Técnica | Archivo |
 | --- | --- | --- | --- | --- | --- |
-| P1 | racing-pro | Remontada | Desde la vuelta 2 estuvo en alguna de las 3 últimas posiciones y terminó 3.º o mejor | `foldLeft` que guarda la peor vuelta | `Comeback.scala` |
-| P2 | racing-pro | Racha consistente | 3 vueltas seguidas con tiempos a 1 % o menos de su promedio. Las ventanas que se solapan son una sola racha | `sliding(3)` y `foldLeft` para unir ventanas | `ConsistentStreak.scala` |
-| P3 | arena-clash | Racha de eliminaciones | 3 o más eliminaciones del mismo jugador en 10 s sin morir entre ellas | `foldLeft` con un `StreakState` inmutable | `KillStreak.scala` |
-| P4 | arena-clash | Venganza | A elimina a B y B elimina a A en los 60 s siguientes | `flatMap` y `find` en ventana | `Revenge.scala` |
-| P5 | arena-clash | Remontada de equipo | El equipo ganador estuvo 5 o más eliminaciones abajo | `scanLeft` del marcador y `exists` | `TeamComeback.scala` |
-| P6 | arena-clash | Abandono por frustración | 3 muertes en 60 s seguidas de `PLAYER_LEFT` en menos de 30 s | `sliding(3)` y `find` | `RageQuit.scala` |
+| P1 | trivia | Racha de aciertos | 5 o más `ANSWER_SUBMITTED` correctos seguidos del mismo jugador, ordenados por `number`. Un error o un timeout corta la racha; se reporta una vez por racha | `Patterns.runs`, un `foldLeft` que parte la lista en tramos | `AnswerStreak.scala` |
+| P2 | trivia | Remontada | Después de algún `QUESTION_CLOSED` desde la pregunta 2, el jugador estaba solo en el último lugar por puntaje, y terminó con `placement` 1 | `scanLeft` sobre los `SCORE_CHANGED`: la tabla de totales después de cada evento | `TriviaComeback.scala` |
+| P3 | snake | Frenesí | 5 `FOOD_EATEN` con 15 s o menos entre el primero y el último, en la misma vida. Una vez por vida | `sliding(5)` sobre las frutas de cada vida y `find` | `Frenzy.scala` |
+| P4 | snake | Muerte por codicia | `SNAKE_DIED` menos de 2 s después de un `FOOD_EATEN` | `foldLeft` que guarda la última fruta de cada jugador | `GreedyDeath.scala` |
+| P5 | blackjack | Mano caliente | 4 o más `HAND_RESULT` `WIN` seguidos del mismo jugador, por ronda. `PUSH` corta la racha | `Patterns.runs` | `HotHand.scala` |
+| P6 | blackjack | All-in por frustración | `BET_PLACED` con `amount == chipsBefore` justo después de 3 `HAND_RESULT` `LOSE` seguidos del mismo jugador | `filter`, `takeRight(3)`, `forall` | `TiltAllIn.scala` |
 
 Descripciones reales que genera cada uno:
 
 | ID | Partida | Descripción |
 | --- | --- | --- |
-| P1 | `rp-scn-comeback` | p-ana estuvo en la posición 8 en la vuelta 2 y terminó en el puesto 2 |
-| P2 | `rp-scn-steady` | p-kev hizo las vueltas 4 a 7 con tiempos dentro del 1 % de su promedio |
-| P3 | `ac-scn-spree` | p-ana eliminó a 4 rivales en 8 s sin morir |
-| P4 | `ac-0001` | p-vale eliminó a p-mari y p-mari se vengó 24,7 s después |
-| P5 | `ac-scn-teamback` | BLUE estuvo 8 eliminaciones abajo (5 a 13) y ganó 30 a 27 |
-| P6 | `ac-scn-ragequit` | p-gabo murió 3 veces en 40 s y se fue 10 s después |
+| P1 | `tv-scn-streak` | p-ana acertó 6 preguntas seguidas (de la 2 a la 7) |
+| P2 | `tv-scn-comeback` | p-luis iba solo en el último lugar después de la pregunta 2 y ganó la partida |
+| P3 | `sn-scn-frenzy` | p-kev comió 5 frutas en 14 s (vida 1) |
+| P4 | `sn-scn-greedy` | p-dani murió (WALL) 1 s después de comer, con largo 11 |
+| P5 | `bj-scn-hot` | p-mari ganó 5 manos seguidas (rondas 2 a 6) |
+| P6 | `bj-scn-allin` | p-gabo perdió 3 manos seguidas y apostó todas sus fichas (700) en la ronda 4 |
 
 ```json
-{"patternId": "P3", "name": "Racha de eliminaciones", "gameId": "arena-clash", "matchId": "ac-scn-spree",
- "playerId": "p-ana", "teamId": "RED", "atMs": 208000,
- "description": "p-ana eliminó a 4 rivales en 8 s sin morir",
- "evidence": ["c35b855e-…", "2aea6997-…", "4b9fa3b4-…", "a7f6ad05-…"]}
+{"patternId": "P3", "name": "Frenesí", "gameId": "snake", "matchId": "sn-scn-frenzy",
+ "playerId": "p-kev", "teamId": null, "atMs": 34000,
+ "description": "p-kev comió 5 frutas en 14 s (vida 1)",
+ "evidence": ["447515d8-…", "b1ccdd2d-…", "d76bc982-…", "2daaa0c8-…", "491b8ae5-…"]}
 ```
 
-Los cuatro `eventId` de `evidence` son las cuatro eliminaciones. Se pueden buscar en `data/samples/demo-small.jsonl` para ver los eventos originales.
+Los cinco `eventId` de `evidence` son las cinco frutas. Se pueden buscar en `data/samples/demo-small.jsonl` para ver los eventos originales.
 
 ### Partidas de escenario
 
-El simulador genera 6 partidas que fuerzan cada patrón exactamente una vez: `rp-scn-comeback`, `rp-scn-steady`, `ac-scn-spree`, `ac-scn-revenge`, `ac-scn-teamback` y `ac-scn-ragequit`. Sus tiempos de vuelta y secuencias de eliminaciones son fijos, y los comentarios de `simulator/internal/scenario/scenario.go` muestran la cuenta que garantiza el patrón. Hay dos pruebas que lo verifican: una en Go (que el escenario cumple la condición) y otra en Scala (que el analyzer detecta ese patrón y ningún otro).
+El simulador genera 6 partidas que fuerzan cada patrón exactamente una vez: `tv-scn-streak`, `tv-scn-comeback`, `sn-scn-frenzy`, `sn-scn-greedy`, `bj-scn-hot` y `bj-scn-allin`. Sus respuestas, tiempos de frutas y cartas son fijos, y los comentarios de `simulator/internal/scenario/scenario.go` muestran la cuenta que garantiza el patrón (por ejemplo, la tabla de aciertos después de cada pregunta en las dos partidas de trivia). Hay dos pruebas que lo verifican: una en Go (que el escenario cumple la condición) y otra en Scala, `ScenarioPatternsSuite` (que el analyzer detecta ese patrón y ningún otro).
 
-En partidas al azar los patrones también aparecen. P2 y P4 son los más frecuentes: con tiempos de vuelta que varían cerca de 1 %, tres vueltas parecidas seguidas son comunes, y con 10 jugadores y unas 55 eliminaciones por partida, también lo son las venganzas. El tablero tiene filtros por tipo de patrón para que no tapen a los demás.
+En partidas al azar los patrones también aparecen. P3 y P4 son los más frecuentes en snake: un jugador hábil come cada 2 o 3 s, y la muerte llega en cualquier momento entre dos frutas. En blackjack, P6 aparece cuando un jugador va con todo después de perder, que es justo lo que hace el simulador con cierta probabilidad. El tablero tiene filtros por tipo de patrón para que no tapen a los demás.
 
 ## Pruebas
 
-Cada estadística tiene su prueba en `analyzer/src/test/scala/gamestats/analysis/`, con una partida chica escrita a mano y el valor esperado calculado en un comentario. Cada patrón tiene una prueba positiva y una negativa que casi lo cumple; por ejemplo, P3 con la tercera eliminación a los 10,5 s no es una racha. `DeterminismSuite` comprueba que analizar el mismo lote dos veces da el mismo resultado.
+Cada estadística tiene su prueba en `analyzer/src/test/scala/gamestats/analysis/` (`TriviaStatsSuite`, `SnakeStatsSuite`, `BlackjackStatsSuite`), con una partida chica escrita a mano y el valor esperado calculado en un comentario, por ejemplo `// (2000 + 1000 + 6000) / 3`. Cada patrón tiene en `PatternsSuite` una prueba positiva y una negativa que casi lo cumple; por ejemplo, P3 con 5 frutas en 15,001 s no es un frenesí, y P4 con la muerte justo 2 s después de comer tampoco cuenta. `GenericStatsSuite` prueba `GenericAnalyzer` con `card-duel`, un juego inventado que solo existe en la prueba. `DeterminismSuite` comprueba que analizar el mismo lote dos veces da el mismo resultado.

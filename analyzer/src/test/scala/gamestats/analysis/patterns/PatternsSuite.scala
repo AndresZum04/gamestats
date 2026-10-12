@@ -1,261 +1,276 @@
 package gamestats.analysis.patterns
 
-import gamestats.analysis.{AnalyzerRegistry, MatchContext}
-import gamestats.codec.Typed
+import gamestats.analysis.blackjack.BlackjackAnalyzer
+import gamestats.analysis.snake.SnakeAnalyzer
+import gamestats.analysis.trivia.TriviaAnalyzer
 import gamestats.fixtures.Fixtures.*
-import gamestats.fixtures.Samples
 import gamestats.model.*
-import io.circe.Json
 
-/** One positive and one "almost" case per pattern, then the simulator's scenarios, each of which
-  * must produce exactly its own pattern.
+/** Each pattern with a hand-written match that shows it and one that almost does (the "near miss"),
+  * which must give nothing.
   */
 class PatternsSuite extends munit.FunSuite:
 
-  // ---------- racing helpers ----------
+  def ids(a: MatchAnalysis): List[(String, Option[String])] =
+    a.patterns.map(p => (p.patternId, p.playerId))
 
-  /** laps: player -> list of (lapTimeMs, position) for laps 1, 2, ... */
-  def race(
-      laps: Map[String, List[(Long, Int)]],
-      placements: (String, Int)*
-  ): MatchContext[RacingEvent] =
-    val lapSpecs = laps.toList
-      .flatMap((p, ls) => ls.zipWithIndex.map { case ((t, pos), i) => (i + 1, pos, p, t) })
-      .sorted
-      .map((lap, pos, p, t) =>
-        e(
-          lap * 100.0 + pos,
-          "LAP_COMPLETED",
-          p,
-          "lap" -> n(lap),
-          "lapTimeMs" -> n(t.toDouble),
-          "position" -> n(pos),
-          "topSpeedKmh" -> n(300)
-        )
-      )
-    val specs =
-      List(
-        sys(0, "MATCH_STARTED", "players" -> arr(laps.keys.toList.sorted*), "mode" -> s("GP"))
-      ) ++
-        lapSpecs ++
-        List(
-          sys(5000, "MATCH_FINISHED", "durationMs" -> n(5000000), "results" -> results(placements*))
-        )
-    MatchContext.build(batch("racing-pro", specs), Typed.toRacing)
-
-  val sixDrivers = List("p-a" -> 2, "p-b" -> 4, "p-c" -> 1, "p-d" -> 3, "p-e" -> 5, "p-f" -> 6)
-
-  def steadyLaps(positions: Int*): List[(Long, Int)] =
-    positions.toList.zipWithIndex.map((pos, i) => ((if i % 2 == 0 then 90000L else 93000L), pos))
-
-  test("P1 positive: in the last three from lap 2 on, then on the podium") {
-    val ctx = race(
-      Map(
-        "p-a" -> steadyLaps(1, 6, 4),
-        "p-b" -> steadyLaps(2, 2, 4),
-        "p-c" -> steadyLaps(3, 1, 1),
-        "p-d" -> steadyLaps(4, 3, 3),
-        "p-e" -> steadyLaps(5, 4, 5),
-        "p-f" -> steadyLaps(6, 5, 6)
-      ),
-      sixDrivers*
-    )
-    val found = Comeback.detect(ctx)
-    assertEquals(found.map(_.playerId), List(Some("p-a")))
-    assert(found.head.description.contains("posición 6 en la vuelta 2"))
+  test("runs splits a list into the runs that satisfy the condition") {
+    assertEquals(Patterns.runs(List(1, 2, -1, 3, 4, 5, -2))(_ > 0), List(List(1, 2), List(3, 4, 5)))
+    assertEquals(Patterns.runs(List(-1, -2))(_ > 0), Nil)
+    assertEquals(Patterns.runs(List.empty[Int])(_ > 0), Nil)
   }
 
-  test("P1 almost: last three only in lap 1, or last three but finished 4th") {
-    val ctx = race(
-      Map(
-        "p-a" -> steadyLaps(6, 3, 2),
-        "p-b" -> steadyLaps(2, 5, 4),
-        "p-c" -> steadyLaps(3, 1, 1),
-        "p-d" -> steadyLaps(4, 3, 3),
-        "p-e" -> steadyLaps(5, 4, 5),
-        "p-f" -> steadyLaps(1, 6, 6)
-      ),
-      sixDrivers*
-    )
-    assertEquals(
-      Comeback.detect(ctx),
-      Nil
-    ) // p-a: 6th only in lap 1; p-b: 5th in lap 2 but finished 4th
-  }
+  // --- trivia ------------------------------------------------------------------------------
 
-  test("P1 needs the final result: nothing for a PARTIAL race") {
-    val ctx = race(Map("p-a" -> steadyLaps(1, 6, 4)), sixDrivers*)
-    val partial =
-      ctx.copy(batch = ctx.batch.copy(status = BatchStatus.PARTIAL), placements = Map.empty)
-    assertEquals(Comeback.detect(partial), Nil)
-  }
-
-  def timed(times: Long*): List[(Long, Int)] = times.toList.map(_ -> 1)
-
-  test("P2 positive: overlapping steady windows are one streak") {
-    // windows 1-3 and 2-4 are within 1 %; window 3-5 is not
-    val ctx = race(Map("p-a" -> timed(90000, 90100, 90200, 90300, 99000)), "p-a" -> 1)
-    val found = ConsistentStreak.detect(ctx)
-    assertEquals(found.size, 1)
-    assert(found.head.description.contains("vueltas 1 a 4"), found.head.description)
-    assertEquals(found.head.evidence.size, 4)
-  }
-
-  test("P2 almost: three laps 1.1 % away from their average") {
-    // avg 91000; 90000 and 92000 are 1000 ms = 1.099 % away
-    val ctx = race(Map("p-a" -> timed(90000, 91000, 92000)), "p-a" -> 1)
-    assertEquals(ConsistentStreak.detect(ctx), Nil)
-  }
-
-  // ---------- arena helpers ----------
-
-  val teams: Json = Json.obj("RED" -> arr("p-a", "p-b", "p-c"), "BLUE" -> arr("p-x", "p-y", "p-z"))
-
-  /** kills: (seconds, killer, victim); leaves: (seconds, player). */
-  def fight(
-      kills: List[(Double, String, String)],
-      winner: String = "RED",
-      leaves: List[(Double, String)] = Nil
-  ): MatchContext[ArenaEvent] =
-    val killSpecs = kills.map((t, k, v) =>
-      e(
+  /** One player answering questions 1..n: C right, W wrong, T timeout. */
+  def answers(row: String): MatchBatch =
+    val specs = row.toList.zipWithIndex.flatMap { (c, i) =>
+      val q = s"q$i"
+      val t = i * 20.0
+      val shown = sys(
         t,
-        "PLAYER_ELIMINATED",
-        k,
-        "victimId" -> s(v),
-        "weapon" -> s("RIFLE"),
-        "distanceM" -> n(20),
-        "assistIds" -> arr()
+        "QUESTION_SHOWN",
+        "questionId" -> s(q),
+        "number" -> n(i + 1),
+        "category" -> s("CIENCIA"),
+        "difficulty" -> s("EASY"),
+        "timeLimitMs" -> n(10000)
       )
-    )
-    val leaveSpecs = leaves.map((t, p) => e(t, "PLAYER_LEFT", p, "reason" -> s("QUIT")))
-    val started = sys(
-      0,
-      "MATCH_STARTED",
-      "players" -> arr("p-a", "p-b", "p-c", "p-x", "p-y", "p-z"),
-      "mode" -> s("TDM"),
-      "teams" -> teams
-    )
-    val finished = sys(
-      900,
-      "MATCH_FINISHED",
-      "durationMs" -> n(900000),
-      "results" -> results(),
-      "winnerTeam" -> s(winner)
-    )
-    val specs = List(started) ++ (killSpecs ++ leaveSpecs).sortBy(_.at) ++ List(finished)
-    MatchContext.build(batch("arena-clash", specs), Typed.toArena)
-
-  test("P3 positive: 3 kills in 10 s; 4 kills in 8 s is one streak") {
-    assertEquals(
-      KillStreak.detect(fight(List((0, "p-a", "p-x"), (4, "p-a", "p-y"), (10, "p-a", "p-z")))).size,
-      1
-    )
-    val four = KillStreak.detect(
-      fight(
-        List((100, "p-a", "p-x"), (102, "p-a", "p-y"), (105, "p-a", "p-z"), (108, "p-a", "p-x"))
-      )
-    )
-    assertEquals(four.map(_.evidence.size), List(4))
-    assert(four.head.description.contains("4 rivales en 8 s"), four.head.description)
-  }
-
-  test("P3 almost: third kill at 10.5 s, or a death in between") {
-    assertEquals(
-      KillStreak.detect(fight(List((0, "p-a", "p-x"), (4, "p-a", "p-y"), (10.5, "p-a", "p-z")))),
-      Nil
-    )
-    assertEquals(
-      KillStreak.detect(
-        fight(List((0, "p-a", "p-x"), (4, "p-a", "p-y"), (6, "p-x", "p-a"), (8, "p-a", "p-z")))
-      ),
-      Nil
-    )
-  }
-
-  test("P4 positive: B eliminates A 60 s after A eliminated B") {
-    val found = Revenge.detect(fight(List((10, "p-a", "p-x"), (70, "p-x", "p-a"))))
-    assertEquals(found.map(f => (f.playerId, f.evidence.size)), List((Some("p-x"), 2)))
-  }
-
-  test("P4 almost: 61 s later, or B eliminates someone else") {
-    assertEquals(Revenge.detect(fight(List((10, "p-a", "p-x"), (71, "p-x", "p-a")))), Nil)
-    assertEquals(Revenge.detect(fight(List((10, "p-a", "p-x"), (20, "p-x", "p-b")))), Nil)
-  }
-
-  def series(
-      start: Double,
-      killer: String,
-      victim: String,
-      count: Int
-  ): List[(Double, String, String)] =
-    (0 until count).toList.map(i => (start + i * 20.0, killer, victim))
-
-  test("P5 positive: BLUE was 5 behind and won") {
-    val ctx = fight(series(0, "p-a", "p-x", 5) ++ series(200, "p-x", "p-a", 6), winner = "BLUE")
-    val found = TeamComeback.detect(ctx)
-    assertEquals(found.map(_.teamId), List(Some("BLUE")))
-    assert(
-      found.head.description.contains("5 eliminaciones abajo (0 a 5) y ganó 6 a 5"),
-      found.head.description
-    )
-  }
-
-  test("P5 almost: only 4 behind") {
-    assertEquals(
-      TeamComeback.detect(
-        fight(series(0, "p-a", "p-x", 4) ++ series(200, "p-x", "p-a", 5), winner = "BLUE")
-      ),
-      Nil
-    )
-  }
-
-  test("P6 positive: 3 deaths in 60 s and leaving 29 s later") {
-    val ctx = fight(
-      List((0, "p-a", "p-x"), (30, "p-b", "p-x"), (60, "p-c", "p-x")),
-      leaves = List((89, "p-x"))
-    )
-    assertEquals(
-      RageQuit.detect(ctx).map(f => (f.playerId, f.evidence.size)),
-      List((Some("p-x"), 4))
-    )
-  }
-
-  test("P6 almost: leaving 30 s later, or the deaths spread over 61 s") {
-    val late = fight(
-      List((0, "p-a", "p-x"), (30, "p-b", "p-x"), (60, "p-c", "p-x")),
-      leaves = List((90, "p-x"))
-    )
-    assertEquals(RageQuit.detect(late), Nil)
-    val spread = fight(
-      List((0, "p-a", "p-x"), (30, "p-b", "p-x"), (61, "p-c", "p-x")),
-      leaves = List((70, "p-x"))
-    )
-    assertEquals(RageQuit.detect(spread), Nil)
-  }
-
-  // ---------- simulator scenarios ----------
-
-  val expected = List(
-    "rp-scn-comeback" -> ("P1", Some("p-ana"), None),
-    "rp-scn-steady" -> ("P2", Some("p-kev"), None),
-    "ac-scn-spree" -> ("P3", Some("p-ana"), Some("RED")),
-    "ac-scn-revenge" -> ("P4", Some("p-tomi"), Some("BLUE")),
-    "ac-scn-teamback" -> ("P5", None, Some("BLUE")),
-    "ac-scn-ragequit" -> ("P6", Some("p-gabo"), Some("BLUE"))
-  )
-
-  for (matchId, (patternId, player, team)) <- expected do
-    test(s"$matchId produces exactly $patternId") {
-      val batch = Samples.scenario(matchId)
-      val found = AnalyzerRegistry.forGame(batch.gameId).analyze(batch).patterns
-      assertEquals(
-        found.map(p => (p.patternId, p.playerId, p.teamId)),
-        List((patternId, player, team))
-      )
-      val ids = batch.events.map(_.eventId).toSet
-      assert(
-        found.head.evidence.nonEmpty && found.head.evidence.forall(ids),
-        "evidence must point to events of the batch"
-      )
+      val act =
+        if c == 'T' then e(t + 10, "ANSWER_TIMEOUT", "p-ana", "questionId" -> s(q))
+        else
+          e(
+            t + 2,
+            "ANSWER_SUBMITTED",
+            "p-ana",
+            "questionId" -> s(q),
+            "option" -> s("A"),
+            "correct" -> b(c == 'C'),
+            "responseMs" -> n(2000)
+          )
+      List(shown, act)
     }
+    batch(
+      "trivia",
+      sys(0, "MATCH_STARTED", "players" -> arr("p-ana"), "mode" -> s("CLASSIC")) :: specs
+    )
+
+  test("P1: 5 right answers in a row, reported once with the 5 answers as evidence") {
+    val a = TriviaAnalyzer.analyze(answers("WCCCCCW"))
+    assertEquals(ids(a), List(("P1", Some("p-ana"))))
+    assertEquals(a.patterns.head.evidence.size, 5)
+    // Two streaks of 5 are two matches.
+    assertEquals(TriviaAnalyzer.analyze(answers("CCCCCWCCCCC")).patterns.size, 2)
+  }
+
+  test("P1 near miss: 4 right, a timeout, then 1 right is not a streak") {
+    assertEquals(TriviaAnalyzer.analyze(answers("CCCCTC")).patterns, Nil)
+    assertEquals(TriviaAnalyzer.analyze(answers("CCCCWC")).patterns, Nil)
+  }
+
+  /** Three players; deltas(p)(q) is what player p scores in question q. Placements are given. */
+  def scores(deltas: Map[String, List[Int]], placements: (String, Int)*): List[Spec] =
+    val players = deltas.keys.toList.sorted
+    val questions = deltas.values.head.size
+    val start = sys(0, "MATCH_STARTED", "players" -> arr(players*), "mode" -> s("CLASSIC"))
+    val body = (0 until questions).toList.flatMap { q =>
+      val t = q * 20.0
+      val shown = sys(
+        t + 1,
+        "QUESTION_SHOWN",
+        "questionId" -> s(s"q$q"),
+        "number" -> n(q + 1),
+        "category" -> s("HISTORIA"),
+        "difficulty" -> s("EASY"),
+        "timeLimitMs" -> n(10000)
+      )
+      val changes = players.map { p =>
+        val d = deltas(p)
+        e(t + 5, "SCORE_CHANGED", p, "delta" -> n(d(q)), "total" -> n(d.take(q + 1).sum))
+      }
+      val closed = sys(
+        t + 12,
+        "QUESTION_CLOSED",
+        "questionId" -> s(s"q$q"),
+        "correctOption" -> s("A"),
+        "correctCount" -> n(1)
+      )
+      (shown :: changes) :+ closed
+    }
+    val end = sys(
+      questions * 20.0,
+      "MATCH_FINISHED",
+      "durationMs" -> n(questions * 20000),
+      "results" -> results(placements*)
+    )
+    (start :: body) :+ end
+
+  test("P2: alone in last place after question 2, then first") {
+    // totals after Q2: p-ana 200, p-sofi 100, p-luis 0; final p-luis 400, the others 200
+    val specs = scores(
+      Map(
+        "p-ana" -> List(100, 100, 0, 0),
+        "p-sofi" -> List(0, 100, 100, 0),
+        "p-luis" -> List(0, 0, 200, 200)
+      ),
+      "p-luis" -> 1,
+      "p-ana" -> 2,
+      "p-sofi" -> 2
+    )
+    val a = TriviaAnalyzer.analyze(batch("trivia", specs))
+    assertEquals(ids(a), List(("P2", Some("p-luis"))))
+    // A PARTIAL match has no final placement: nothing to report.
+    assertEquals(
+      TriviaAnalyzer.analyze(batch("trivia", specs, status = BatchStatus.PARTIAL)).patterns,
+      Nil
+    )
+  }
+
+  test("P2 near miss: alone in last place only after question 1, or alone last and not first") {
+    // after Q1 p-luis is alone last (not counted); from Q2 on he is always tied
+    val onlyFirst = scores(
+      Map(
+        "p-ana" -> List(100, 0, 100, 0),
+        "p-sofi" -> List(100, 100, 0, 0),
+        "p-luis" -> List(0, 100, 100, 300)
+      ),
+      "p-luis" -> 1,
+      "p-ana" -> 2,
+      "p-sofi" -> 2
+    )
+    assertEquals(TriviaAnalyzer.analyze(batch("trivia", onlyFirst)).patterns, Nil)
+    // p-luis alone last after Q2 but finishes 2nd
+    val notFirst = scores(
+      Map(
+        "p-ana" -> List(100, 100, 0, 0),
+        "p-sofi" -> List(0, 100, 100, 100),
+        "p-luis" -> List(0, 0, 200, 0)
+      ),
+      "p-sofi" -> 1,
+      "p-luis" -> 2,
+      "p-ana" -> 2
+    )
+    assertEquals(TriviaAnalyzer.analyze(batch("trivia", notFirst)).patterns, Nil)
+  }
+
+  // --- snake -------------------------------------------------------------------------------
+
+  def food(at: Double): Spec =
+    e(at, "FOOD_EATEN", "p-kev", "foodType" -> s("APPLE"), "length" -> n(4), "points" -> n(10))
+
+  def died(at: Double): Spec =
+    e(at, "SNAKE_DIED", "p-kev", "cause" -> s("WALL"), "length" -> n(8), "livesLeft" -> n(2))
+
+  def snake(specs: Spec*): MatchAnalysis =
+    SnakeAnalyzer.analyze(
+      batch(
+        "snake",
+        sys(0, "MATCH_STARTED", "players" -> arr("p-kev"), "mode" -> s("CLASSIC")) :: specs.toList
+      )
+    )
+
+  test("P3: 5 fruits within 15 s, once per life") {
+    val a = snake(food(10), food(13), food(16), food(19), food(25), food(28)) // 10 to 25: 15 s
+    assertEquals(ids(a), List(("P3", Some("p-kev"))))
+    assertEquals(a.patterns.head.evidence.size, 5)
+    // a second burst in a new life counts again
+    val twoLives = snake(
+      food(10),
+      food(11),
+      food(12),
+      food(13),
+      food(14),
+      died(16),
+      food(20),
+      food(21),
+      food(22),
+      food(23),
+      food(24)
+    )
+    assertEquals(twoLives.patterns.map(_.patternId), List("P3", "P3"))
+  }
+
+  test("P3 near miss: 15.001 s, or 5 fast fruits split by a death") {
+    assertEquals(snake(food(10), food(13), food(16), food(19), food(25.001)).patterns, Nil)
+    assertEquals(
+      snake(food(10), food(11), food(12), died(15), food(17), food(18)).patterns.map(_.patternId),
+      Nil
+    )
+  }
+
+  test("P4: death less than 2 s after a fruit") {
+    val a = snake(food(10), died(11.999))
+    assertEquals(ids(a), List(("P4", Some("p-kev"))))
+    assertEquals(a.patterns.head.evidence.size, 2)
+  }
+
+  test("P4 near miss: death exactly 2 s after the fruit") {
+    assertEquals(snake(food(10), died(12)).patterns, Nil)
+  }
+
+  // --- blackjack ---------------------------------------------------------------------------
+
+  /** p-mari plays one hand per round: W win, L lose, P push. bets(round) overrides the bet of 100;
+    * chips follow the results from 1000.
+    */
+  def table(row: String, bets: Map[Int, Int] = Map.empty): MatchAnalysis =
+    val (specs, _) = row.toList.zipWithIndex.foldLeft((List.empty[Spec], 1000)) {
+      case ((acc, chips), (c, i)) =>
+        val round = i + 1
+        val amount = bets.getOrElse(round, 100)
+        val payout = c match
+          case 'W' => amount
+          case 'L' => -amount
+          case _   => 0
+        val result = Map('W' -> "WIN", 'L' -> "LOSE", 'P' -> "PUSH")(c)
+        val t = round * 10.0
+        val hand = List(
+          e(
+            t,
+            "BET_PLACED",
+            "p-mari",
+            "round" -> n(round),
+            "amount" -> n(amount),
+            "chipsBefore" -> n(chips)
+          ),
+          e(
+            t + 5,
+            "HAND_RESULT",
+            "p-mari",
+            "round" -> n(round),
+            "result" -> s(result),
+            "payout" -> n(payout),
+            "chips" -> n(chips + payout)
+          )
+        )
+        (acc ++ hand, chips + payout)
+    }
+    BlackjackAnalyzer.analyze(
+      batch(
+        "blackjack",
+        sys(0, "MATCH_STARTED", "players" -> arr("p-mari"), "mode" -> s("TABLE")) :: specs
+      )
+    )
+
+  test("P5: 4 wins in a row, reported once per run") {
+    val a = table("LWWWWWL")
+    assertEquals(ids(a), List(("P5", Some("p-mari"))))
+    assertEquals(a.patterns.head.evidence.size, 5)
+  }
+
+  test("P5 near miss: a PUSH ends the run") {
+    assertEquals(table("WWWPW").patterns, Nil)
+  }
+
+  test("P6: all in right after 3 losses in a row") {
+    // chips 1000 -> 900 -> 800 -> 700, then a bet of 700
+    val a = table("LLLW", bets = Map(4 -> 700))
+    assertEquals(ids(a), List(("P6", Some("p-mari"))))
+    assertEquals(a.patterns.head.evidence.size, 4) // 3 losses + the bet
+  }
+
+  test("P6 near miss: a PUSH among the losses, or a bet below the chips") {
+    // L L P L: the three hands before the bet are L, P, L
+    assertEquals(table("LLPLW", bets = Map(5 -> 800)).patterns, Nil)
+    assertEquals(table("LLLW", bets = Map(4 -> 600)).patterns, Nil)
+  }

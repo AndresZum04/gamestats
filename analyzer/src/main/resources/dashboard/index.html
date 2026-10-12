@@ -82,8 +82,7 @@
     <section class="panel" id="detail" hidden>
       <h2 id="detail-title"></h2>
       <div class="kpis" id="detail-kpis"></div>
-      <h3 id="chart-title"></h3>
-      <div class="chart-box"><canvas id="chart"></canvas></div>
+      <div id="charts"></div>
       <p class="muted" id="chart-missing" hidden>El gráfico necesita conexión a internet (Chart.js se carga desde cdnjs).</p>
       <h3>Jugadores</h3>
       <div class="scroll"><table id="players"></table></div>
@@ -115,35 +114,48 @@
 "use strict";
 
 const GAMES = [
-  { id: "racing-pro", label: "Carreras" },
-  { id: "arena-clash", label: "Combate" },
-  { id: "chess-lite", label: "Ajedrez" },
+  { id: "trivia", label: "Trivia" },
+  { id: "snake", label: "Snake" },
+  { id: "blackjack", label: "Blackjack" },
 ];
 const PATTERN_NAMES = {
-  P1: "Remontada", P2: "Racha consistente", P3: "Racha de eliminaciones",
-  P4: "Venganza", P5: "Remontada de equipo", P6: "Abandono por frustración",
+  P1: "Racha de aciertos", P2: "Remontada", P3: "Frenesí",
+  P4: "Muerte por codicia", P5: "Mano caliente", P6: "All-in por frustración",
 };
 // Columns of the players table: [metric, header, format]
 const COLUMNS = {
-  "racing-pro": [
-    ["bestLapMs", "Mejor vuelta", "lap"], ["avgLapMs", "Promedio", "lap"], ["consistency", "Consistencia", "dec3"],
-    ["positionsGained", "Pos. ganadas", "signed"], ["overtakes", "Adelant.", "int"],
-    ["incidentImpactMs", "Impacto incid.", "secs"], ["pitEffectMs", "Efecto pits", "secs"],
+  trivia: [
+    ["correct", "Aciertos", "int"], ["wrong", "Errores", "int"], ["timeouts", "Sin resp.", "int"],
+    ["correctPct", "% aciertos", "pct"], ["avgResponseMs", "Resp. prom.", "secs"],
+    ["fastestCorrectMs", "Acierto más rápido", "secs"], ["finalScore", "Puntaje", "int"],
   ],
-  "arena-clash": [
-    ["kills", "Elim.", "int"], ["deaths", "Muertes", "int"], ["assists", "Asist.", "int"], ["kd", "K/D", "dec2"],
-    ["damageDealt", "Daño", "int"], ["headshotPct", "% headshot", "pct"], ["longestKillM", "Más lejana (m)", "dec1"],
-    ["damagePerKill", "Daño/elim.", "int"], ["weaponConversionPct", "Conv. armas", "pct"],
+  snake: [
+    ["maxLength", "Largo máx.", "int"], ["fruits", "Frutas", "int"], ["fruitsPerMinute", "Frutas/min", "dec2"],
+    ["avgMsBetweenFruits", "Entre frutas", "secs"], ["deaths", "Muertes", "int"],
+    ["avgFruitsPerLife", "Frutas/vida", "dec1"], ["finalScore", "Puntaje", "int"],
+  ],
+  blackjack: [
+    ["hands", "Manos", "int"], ["wins", "Victorias", "int"], ["winPct", "% victoria", "pct"],
+    ["netGain", "Ganancia", "signed"], ["bestHand", "Mejor mano", "signed"], ["worstHand", "Peor mano", "signed"],
+    ["busts", "Se pasó", "int"], ["blackjacks", "Blackjacks", "int"], ["doubles", "Dobló", "int"],
+    ["doubleWinPct", "% al doblar", "pct"],
   ],
   default: [
     ["finalScore", "Puntaje", "dec1"], ["longestScoreStreak", "Racha pts.", "int"], ["turns", "Turnos", "int"],
     ["avgTurnMs", "Turno prom.", "secs"], ["maxTurnMs", "Turno máx.", "secs"], ["disconnections", "Desconex.", "int"],
   ],
 };
+// Tiebreak metric of each leaderboard: [header, format, note]
+const BOARD_METRICS = {
+  correctPct: ["% aciertos prom.", "pct", "Desempate por % de aciertos promedio."],
+  maxLength: ["Largo máx. prom.", "dec1", "Desempate por largo máximo promedio."],
+  netGain: ["Ganancia neta prom.", "signed", "Desempate por ganancia neta promedio."],
+};
+const DEATH_CAUSES = { WALL: "Pared", SELF: "Se mordió", OBSTACLE: "Obstáculo" };
 const REFRESH_MS = 5000;
 
-const state = { game: "racing-pro", matchId: null, patternFilter: null, knownMatches: new Set(), firstLoad: true };
-let chart = null;
+const state = { game: "trivia", matchId: null, patternFilter: null, knownMatches: new Set(), firstLoad: true };
+let charts = [];
 
 // ---------- helpers ----------
 const $ = (id) => document.getElementById(id);
@@ -168,21 +180,15 @@ function fmtDuration(ms) {
   const s = Math.round(ms / 1000), m = Math.floor(s / 60);
   return m > 0 ? `${m} min ${s % 60} s` : `${s} s`;
 }
-function fmtLap(ms) {
-  if (ms == null) return "–";
-  const m = Math.floor(ms / 60000), s = ((ms % 60000) / 1000).toFixed(3).padStart(6, "0");
-  return `${m}:${s}`;
-}
 function fmt(value, kind) {
   if (value === undefined || value === null) return "–";
   switch (kind) {
-    case "lap": return fmtLap(value);
     case "secs": return `${(value / 1000).toFixed(1)} s`;
     case "pct": return `${Number(value).toFixed(1)} %`;
     case "dec1": return Number(value).toFixed(1);
     case "dec2": return Number(value).toFixed(2);
     case "dec3": return Number(value).toFixed(3);
-    case "signed": return value > 0 ? `+${value}` : String(value);
+    case "signed": { const v = Math.round(value); return v > 0 ? `+${v}` : String(v); }
     default: return String(Math.round(value));
   }
 }
@@ -250,24 +256,25 @@ function renderSummary(s) {
     kpi("Tasa de abandono", `${(s.abandonmentRate * 100).toFixed(1)} %`),
     kpi("Parciales", s.partialMatches),
   ];
-  if (s.mostEffectiveWeapon) items.push(kpi("Arma más efectiva", `${s.mostEffectiveWeapon.weapon} (${s.mostEffectiveWeapon.kills})`));
+  const gm = s.gameMetrics || {};
+  if (gm.hardestCategory) items.push(kpi("Categoría más difícil", `${gm.hardestCategory.category} (${fmt(gm.hardestCategory.correctPct, "pct")})`));
+  if (gm.lengthRecord) items.push(kpi("Récord de largo", `${gm.lengthRecord.length} · ${gm.lengthRecord.playerId} (${gm.lengthRecord.matchId})`));
+  if (gm.mostCommonDeathCause) items.push(kpi("Causa de muerte más común", DEATH_CAUSES[gm.mostCommonDeathCause] || gm.mostCommonDeathCause));
   box.replaceChildren(...items);
 }
 
 function renderLeaderboard(board) {
   const table = $("leaderboard");
-  const metric = board && board.metric === "consistency" ? "Consistencia" : board && board.metric === "kd" ? "K/D" : null;
-  $("board-note").textContent = state.game === "racing-pro"
-    ? "Victoria = podio. Desempate por consistencia promedio."
-    : state.game === "arena-clash" ? "Victoria = equipo ganador. Desempate por K/D promedio." : "Victoria = primer lugar.";
+  const metric = board && BOARD_METRICS[board.metric];
+  $("board-note").textContent = `Victoria = primer lugar.${metric ? " " + metric[2] : ""}`;
   if (!board || board.entries.length === 0) return emptyRow(table, "Sin datos todavía.", 5);
   const head = el("thead", {}, el("tr", {}, el("th", {}, "#"), el("th", {}, "Jugador"),
     el("th", { class: "num" }, "Victorias"), el("th", { class: "num" }, "Partidas"),
-    metric ? el("th", { class: "num" }, metric) : null));
+    metric ? el("th", { class: "num" }, metric[0]) : null));
   const rows = board.entries.map((e) => el("tr", {},
     el("td", {}, e.rank), el("td", {}, e.playerId), el("td", { class: "num" }, e.wins),
     el("td", { class: "num" }, e.matches),
-    metric ? el("td", { class: "num" }, e.avgMetric == null ? "–" : Number(e.avgMetric).toFixed(3)) : null));
+    metric ? el("td", { class: "num" }, fmt(e.avgMetric, metric[1])) : null));
   table.replaceChildren(head, el("tbody", {}, rows));
 }
 
@@ -305,14 +312,18 @@ function renderDetail(a) {
   $("detail-title").textContent = `${a.matchId}${a.partial ? " (parcial)" : ""}`;
   const mm = a.matchMetrics || {};
   const kpis = [kpi("Duración", fmtDuration(a.durationMs)), kpi("Eventos", Object.values(a.eventsByType).reduce((x, y) => x + y, 0))];
-  if (a.gameId === "racing-pro") {
-    if (mm.fastestLapMs) kpis.push(kpi("Vuelta rápida", `${fmtLap(mm.fastestLapMs)} (${mm.fastestLapPlayer})`));
-    kpis.push(kpi("Adelantamientos", mm.overtakes ?? 0), kpi("Choques", mm.crashes ?? 0), kpi("Penalización", `${mm.penaltySeconds ?? 0} s`));
-  } else if (a.gameId === "arena-clash") {
-    if (mm.score) kpis.push(kpi("Marcador", `RED ${mm.score.RED} – ${mm.score.BLUE} BLUE`));
-    if (mm.winnerTeam) kpis.push(kpi("Ganador", mm.winnerTeam));
-    if (mm.firstBlood) kpis.push(kpi("Primera sangre", `${mm.firstBlood.playerId} → ${mm.firstBlood.victimId}`));
-    if (mm.mvp) kpis.push(kpi("MVP", `${mm.mvp.playerId} (${mm.mvp.score})`));
+  if (a.gameId === "trivia") {
+    if (mm.matchCorrectPct != null) kpis.push(kpi("% aciertos de la partida", fmt(mm.matchCorrectPct, "pct")));
+    if (mm.hardestQuestion) kpis.push(kpi("Pregunta más difícil", `${mm.hardestQuestion.questionId} (n.º ${mm.hardestQuestion.number}, ${mm.hardestQuestion.correctCount} aciertos)`));
+    if (mm.fastestPlayer) kpis.push(kpi("Más rápido acertando", `${mm.fastestPlayer.playerId} (${fmt(mm.fastestPlayer.avgCorrectMs, "secs")})`));
+  } else if (a.gameId === "snake") {
+    kpis.push(kpi("Frutas", mm.fruits ?? 0));
+    if (mm.maxLength != null) kpis.push(kpi("Largo máximo", `${mm.maxLength} (${mm.maxLengthPlayer})`));
+    const deaths = Object.entries(mm.deathsByCause || {});
+    if (deaths.length) kpis.push(kpi("Muertes", deaths.map(([c, n]) => `${DEATH_CAUSES[c] || c} ${n}`).join(" · ")));
+  } else if (a.gameId === "blackjack") {
+    kpis.push(kpi("Ganancia de la casa", fmt(mm.houseGain ?? 0, "signed")), kpi("El dealer se pasó", mm.dealerBusts ?? 0));
+    if (mm.highestBet) kpis.push(kpi("Apuesta más alta", `${mm.highestBet.amount} (${mm.highestBet.playerId}, ronda ${mm.highestBet.round})`));
   }
   $("detail-kpis").replaceChildren(...kpis);
 
@@ -330,58 +341,106 @@ function renderDetail(a) {
   $("detail-patterns").replaceChildren(...(a.patterns.length
     ? a.patterns.map((p) => patternItem(p, false))
     : [el("div", { class: "empty" }, "Sin patrones en esta partida.")]));
-  renderChart(a);
+  renderCharts(a);
 }
 
 function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
-function renderChart(a) {
+const color = (i) => `hsl(${(i * 47) % 360} 65% 55%)`;
+const baseOptions = (extra = {}) => ({ animation: false, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, ...extra });
+
+/** Adds a titled chart to the detail panel. */
+function addChart(title, config) {
+  const canvas = el("canvas");
+  $("charts").append(el("h3", {}, title), el("div", { class: "chart-box" }, canvas));
+  charts.push(new Chart(canvas, config));
+}
+
+function renderCharts(a) {
+  charts.forEach((c) => c.destroy());
+  charts = [];
+  $("charts").replaceChildren();
   const missing = typeof window.Chart === "undefined";
   $("chart-missing").hidden = !missing;
   if (missing) return;
-  if (chart) { chart.destroy(); chart = null; }
   Chart.defaults.color = cssVar("--muted");
   Chart.defaults.borderColor = cssVar("--line");
-  const ctx = $("chart");
-  if (a.gameId === "racing-pro") {
-    $("chart-title").textContent = "Tiempo por vuelta (s)";
-    const drivers = a.players.filter((p) => Array.isArray(p.metrics.lapTimesMs));
-    const laps = Math.max(0, ...drivers.map((p) => p.metrics.lapTimesMs.length));
-    chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: Array.from({ length: laps }, (_, i) => `V${i + 1}`),
-        datasets: drivers.map((p, i) => ({
-          label: p.playerId, data: p.metrics.lapTimesMs.map((ms) => ms / 1000),
-          borderColor: `hsl(${(i * 47) % 360} 65% 55%)`, backgroundColor: `hsl(${(i * 47) % 360} 65% 55%)`,
-          tension: 0, pointRadius: 2,
-        })),
-      },
-      options: { animation: false, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } },
-    });
-  } else if (a.gameId === "arena-clash") {
-    $("chart-title").textContent = "Eliminaciones por jugador";
-    const ps = [...a.players].sort((x, y) => (y.metrics.kills || 0) - (x.metrics.kills || 0));
-    chart = new Chart(ctx, {
+  const ps = a.players;
+
+  if (a.gameId === "trivia") {
+    addChart("Aciertos por jugador", {
       type: "bar",
       data: {
         labels: ps.map((p) => p.playerId),
-        datasets: [{
-          label: "Eliminaciones", data: ps.map((p) => p.metrics.kills || 0),
-          backgroundColor: ps.map((p) => p.teamId === "RED" ? cssVar("--red") : cssVar("--blue")),
-        }],
+        datasets: [
+          { label: "Aciertos", data: ps.map((p) => p.metrics.correct || 0), backgroundColor: cssVar("--ok") },
+          { label: "Errores", data: ps.map((p) => p.metrics.wrong || 0), backgroundColor: cssVar("--red") },
+          { label: "Sin responder", data: ps.map((p) => p.metrics.timeouts || 0), backgroundColor: cssVar("--muted") },
+        ],
       },
-      options: { animation: false, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+      options: baseOptions({ scales: { x: { stacked: true }, y: { stacked: true, ticks: { precision: 0 } } } }),
     });
-  } else {
-    $("chart-title").textContent = "Turno promedio (s)";
-    chart = new Chart(ctx, {
+    const categories = [...new Set(ps.flatMap((p) => Object.keys(p.metrics.correctPctByCategory || {})))].sort();
+    addChart("% de aciertos por categoría", {
       type: "bar",
       data: {
-        labels: a.players.map((p) => p.playerId),
-        datasets: [{ label: "Turno promedio", data: a.players.map((p) => (p.metrics.avgTurnMs || 0) / 1000), backgroundColor: cssVar("--accent") }],
+        labels: categories,
+        datasets: ps.map((p, i) => ({
+          label: p.playerId, backgroundColor: color(i),
+          data: categories.map((c) => (p.metrics.correctPctByCategory || {})[c] ?? null),
+        })),
       },
-      options: { animation: false, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+      options: baseOptions({ scales: { y: { min: 0, max: 100 } } }),
+    });
+  } else if (a.gameId === "snake") {
+    const datasets = ps.filter((p) => Array.isArray(p.metrics.lengthSeries)).flatMap((p, i) => [
+      {
+        type: "line", label: `Largo de ${p.playerId}`, borderColor: color(i), backgroundColor: color(i),
+        data: p.metrics.lengthSeries.map((pt) => ({ x: pt.atMs / 1000, y: pt.length })), pointRadius: 1, tension: 0,
+      },
+      {
+        type: "scatter", label: "Muertes", borderColor: cssVar("--red"), backgroundColor: cssVar("--red"),
+        pointStyle: "crossRot", pointRadius: 8, borderWidth: 2,
+        data: p.metrics.lengthSeries.filter((pt) => pt.died).map((pt) => ({ x: pt.atMs / 1000, y: pt.length })),
+      },
+    ]);
+    addChart("Largo durante la partida (las cruces son muertes)", {
+      type: "line",
+      data: { datasets },
+      options: baseOptions({
+        scales: {
+          x: { type: "linear", title: { display: true, text: "segundos" } },
+          y: { beginAtZero: true, ticks: { precision: 0 } },
+        },
+      }),
+    });
+  } else if (a.gameId === "blackjack") {
+    const players = ps.filter((p) => Array.isArray(p.metrics.chipsByRound) && p.metrics.chipsByRound.length);
+    const rounds = Math.max(0, ...players.flatMap((p) => p.metrics.chipsByRound.map((r) => r.round)));
+    addChart("Fichas de cada jugador por ronda", {
+      type: "line",
+      data: {
+        labels: ["Inicio", ...Array.from({ length: rounds }, (_, i) => `R${i + 1}`)],
+        datasets: players.map((p, i) => {
+          const byRound = Object.fromEntries(p.metrics.chipsByRound.map((r) => [r.round, r.chips]));
+          const last = p.metrics.chipsByRound[p.metrics.chipsByRound.length - 1].chips;
+          const start = last - (p.metrics.netGain || 0); // starting chips = final - net gain
+          return {
+            label: p.playerId, borderColor: color(i), backgroundColor: color(i), tension: 0, pointRadius: 2,
+            data: [start, ...Array.from({ length: rounds }, (_, r) => byRound[r + 1] ?? null)],
+          };
+        }),
+      },
+      options: baseOptions({ scales: { y: { beginAtZero: true } } }),
+    });
+  } else {
+    addChart("Turno promedio (s)", {
+      type: "bar",
+      data: {
+        labels: ps.map((p) => p.playerId),
+        datasets: [{ label: "Turno promedio", data: ps.map((p) => (p.metrics.avgTurnMs || 0) / 1000), backgroundColor: cssVar("--accent") }],
+      },
+      options: baseOptions({ plugins: { legend: { display: false } } }),
     });
   }
 }

@@ -10,9 +10,9 @@ Archivos relacionados:
 
 ## Para qué sirve el formato
 
-Un evento es una línea JSON que describe algo que pasó en una partida: alguien completó una vuelta, eliminó a otro jugador o se desconectó. Todos los eventos comparten un sobre con los mismos campos (quién, cuándo, en qué partida y en qué orden), y lo propio de cada juego va dentro de `data`.
+Un evento es una línea JSON que describe algo que pasó en una partida: alguien respondió una pregunta, la serpiente comió una fruta o un jugador pidió carta. Todos los eventos comparten un sobre con los mismos campos (quién, cuándo, en qué partida y en qué orden), y lo propio de cada juego va dentro de `data`.
 
-Con esa separación, el `ingestor` puede validar y agrupar eventos de cualquier juego sin saber nada de carreras ni de combate. Las reglas de cada juego viven en un archivo de configuración y no en el código. Como no sabemos qué juegos va a traer la consola de la segunda parte, también hay eventos genéricos de puntaje, turnos y acciones que sirven para casi cualquier juego.
+Con esa separación, el `ingestor` puede validar y agrupar eventos de cualquier juego sin saber nada de Trivia, de Snake ni de Blackjack. Las reglas de cada juego viven en un archivo de configuración y no en el código. Como no sabemos qué juegos va a traer la consola de la segunda parte, también hay eventos genéricos de puntaje, turnos y acciones que sirven para casi cualquier juego.
 
 ## Cómo se entregan los eventos
 
@@ -33,13 +33,13 @@ La otra forma es `POST /api/v1/events` en el `ingestor` (puerto 8080), con un ev
 | `schemaVersion` | string | sí | Versión del formato del sobre. Hoy solo existe `"1.0"` |
 | `eventId` | string | sí | UUID v4 en minúsculas, único entre todos los eventos |
 | `timestamp` | string | sí | RFC 3339 en UTC con milisegundos, por ejemplo `2026-09-10T14:03:22.120Z` |
-| `gameId` | string | sí | Minúsculas y guiones (`racing-pro`). Tiene que existir en `configs/games/` |
+| `gameId` | string | sí | Minúsculas y guiones (`trivia`, `snake`, `blackjack`). Tiene que existir en `configs/games/` |
 | `gameVersion` | string | sí | Tiene que estar en `versions` de la configuración del juego |
-| `matchId` | string | sí | Único entre juegos, por ejemplo `rp-0007`. Solo letras, dígitos, `-` y `_`, máximo 128 caracteres |
+| `matchId` | string | sí | Único entre juegos, por ejemplo `tv-0007`. Solo letras, dígitos, `-` y `_`, máximo 128 caracteres |
 | `seq` | entero | sí | Mayor o igual a 1. Orden del evento dentro de la partida |
 | `playerId` | string o null | según el tipo | Obligatorio si el tipo tiene `playerRequired: true`. Si no, puede ir `null` o no venir |
 | `type` | string | sí | MAYÚSCULAS_CON_GUION_BAJO, permitido para ese juego |
-| `action` | string | no | Subtipo, por ejemplo la causa de un cambio de posición |
+| `action` | string | no | Subtipo, por ejemplo la decisión `HIT`, `STAND` o `DOUBLE` en Blackjack |
 | `source` | objeto | no | Quién produjo el evento: `{"consoleId", "sessionId"}`. Lo llena la consola; hoy lo pone el simulador |
 | `data` | objeto | sí | Puede ser `{}`. Sus claves obligatorias dependen del tipo |
 
@@ -48,7 +48,7 @@ La otra forma es `POST /api/v1/events` en el `ingestor` (puerto 8080), con un ev
 Un evento completo se ve así:
 
 ```json
-{"schemaVersion":"1.0","eventId":"6f1c2a4e-9b1d-4c3e-8a77-2d5e9f0b1c11","timestamp":"2026-09-10T14:00:00.000Z","gameId":"racing-pro","gameVersion":"1.0","matchId":"rp-0007","seq":1,"playerId":null,"type":"MATCH_STARTED","source":{"consoleId":"sim-01","sessionId":"s-42"},"data":{"players":["p-ana","p-luis","p-sofi"],"mode":"GRAND_PRIX","track":"Monza"}}
+{"schemaVersion":"1.0","eventId":"6513270e-269e-4d37-b2a7-4de452e6b438","timestamp":"2026-09-10T14:00:00.000Z","gameId":"trivia","gameVersion":"1.0","matchId":"tv-0007","seq":1,"playerId":null,"type":"MATCH_STARTED","source":{"consoleId":"sim-01","sessionId":"s-tv-0007"},"data":{"players":["p-ana","p-luis","p-sofi"],"mode":"CLASSIC","questions":10}}
 ```
 
 En los catálogos de abajo, los ejemplos muestran solo `playerId`, `type`, `action` y `data` para que se lean mejor. El resto del sobre siempre va igual. Las líneas completas están en `data/samples/examples.jsonl`.
@@ -59,8 +59,8 @@ Sirven para todos los juegos. Están en [`configs/games/_common.json`](../config
 
 | Tipo | `playerId` | Claves de `data` |
 | --- | --- | --- |
-| `MATCH_STARTED` | null | `players` (lista de ids), `mode` (string). Opcionales: `teams` (objeto equipo a lista de ids), `track` o `map` (string) |
-| `MATCH_FINISHED` | null | `durationMs` (número), `results` (lista de `{playerId, placement, teamId?}`). Opcionales: `winnerTeam`, `score` (objeto equipo a número) |
+| `MATCH_STARTED` | null | `players` (lista de ids), `mode` (string). Cada juego agrega las suyas (ver abajo) |
+| `MATCH_FINISHED` | null | `durationMs` (número), `results` (lista de `{playerId, placement}`). Opcional: `finalScore` |
 | `PLAYER_JOINED` | requerido | Opcional: `teamId` |
 | `PLAYER_LEFT` | requerido | `reason` (string) |
 | `PLAYER_DISCONNECTED` | requerido | ninguna |
@@ -70,73 +70,96 @@ Sirven para todos los juegos. Están en [`configs/games/_common.json`](../config
 | `TURN_ENDED` | requerido | `turn`, `durationMs` (números) |
 | `PLAYER_ACTION` | requerido | Libre. El campo `action` del sobre dice qué acción fue |
 
-Los últimos cuatro son genéricos de jugabilidad. Un juego de cartas o de mesa puede reportar puntos y turnos con ellos sin definir tipos nuevos, y GameStats ya calcula estadísticas a partir de eso (G5 y G6 en [estadisticas.md](estadisticas.md)). `PLAYER_ACTION` sirve para juegos que todavía no tienen tipos propios.
+Los últimos cuatro son genéricos de jugabilidad. Un juego que todavía no tiene tipos propios puede reportar puntos, turnos y acciones con ellos, y GameStats ya calcula estadísticas a partir de eso (G5 y G6 en [estadisticas.md](estadisticas.md)). Trivia usa `SCORE_CHANGED` para los puntos de cada respuesta.
 
 ```json
-{"playerId":null,"type":"MATCH_STARTED","data":{"players":["p-ana","p-luis","p-sofi"],"mode":"GRAND_PRIX","track":"Monza"}}
-{"playerId":null,"type":"MATCH_FINISHED","data":{"durationMs":965300,"results":[{"playerId":"p-ana","placement":1},{"playerId":"p-sofi","placement":2},{"playerId":"p-luis","placement":3}]}}
+{"playerId":null,"type":"MATCH_STARTED","data":{"players":["p-ana","p-luis","p-sofi"],"mode":"CLASSIC","questions":10}}
+{"playerId":null,"type":"MATCH_FINISHED","data":{"durationMs":250000,"results":[{"playerId":"p-ana","placement":1},{"playerId":"p-luis","placement":2},{"playerId":"p-sofi","placement":3}]}}
 {"playerId":"p-ana","type":"PLAYER_JOINED","data":{}}
-{"playerId":"p-dani","type":"PLAYER_LEFT","data":{"reason":"QUIT"}}
-{"playerId":"p-sofi","type":"PLAYER_DISCONNECTED","data":{}}
-{"playerId":"p-sofi","type":"PLAYER_RECONNECTED","data":{"awayMs":4300}}
-{"playerId":"p-luis","type":"SCORE_CHANGED","data":{"delta":3,"total":3,"reason":"CAPTURE_KNIGHT"}}
-{"playerId":"p-ana","type":"TURN_STARTED","data":{"turn":1}}
-{"playerId":"p-ana","type":"TURN_ENDED","data":{"turn":1,"durationMs":4250}}
-{"playerId":"p-mari","type":"PLAYER_ACTION","action":"EMOTE","data":{"emote":"WAVE"}}
+{"playerId":"p-gabo","type":"PLAYER_LEFT","data":{"reason":"NO_CHIPS"}}
+{"playerId":"p-luis","type":"PLAYER_DISCONNECTED","data":{}}
+{"playerId":"p-luis","type":"PLAYER_RECONNECTED","data":{"awayMs":4500}}
+{"playerId":"p-ana","type":"SCORE_CHANGED","data":{"delta":150,"total":150,"reason":"CORRECT_FAST"}}
+{"playerId":"p-mari","type":"TURN_STARTED","data":{"turn":1}}
+{"playerId":"p-mari","type":"TURN_ENDED","data":{"turn":1,"durationMs":2500}}
+{"playerId":"p-kev","type":"PLAYER_ACTION","action":"PAUSE","data":{"reason":"pause"}}
 ```
 
-## Carreras (`racing-pro`, versión 1.0)
+## Trivia (`trivia`, versión 1.0)
 
-Carrera de 8 a 12 pilotos y 10 vueltas. Todos los tipos llevan el `playerId` del piloto.
+De 2 a 6 jugadores responden las mismas 10 preguntas. El que acierta suma puntos, más si responde rápido. Prefijo de `matchId`: `tv-`.
 
-| Tipo | `action` | Claves de `data` |
-| --- | --- | --- |
-| `LAP_COMPLETED` | no | `lap`, `lapTimeMs`, `position`, `topSpeedKmh` (números) |
-| `POSITION_CHANGED` | `OVERTAKE`, `OVERTAKEN`, `PIT` o `CRASH` | `lap`, `from`, `to` (números). Opcional: `otherPlayerId` |
-| `PIT_STOP` | no | `lap`, `durationMs` (números), `tire` (`SOFT`, `MEDIUM` o `HARD`) |
-| `PENALTY` | no | `lap`, `seconds` (números), `reason` (string) |
-| `CRASH` | no | `lap` (número), `severity` (`LOW` o `HIGH`). Opcional: `otherPlayerId` |
-
-```json
-{"playerId":"p-ana","type":"LAP_COMPLETED","data":{"lap":1,"lapTimeMs":92410,"position":7,"topSpeedKmh":318.4}}
-{"playerId":"p-ana","type":"POSITION_CHANGED","action":"OVERTAKE","data":{"lap":2,"from":7,"to":6,"otherPlayerId":"p-luis"}}
-{"playerId":"p-sofi","type":"PIT_STOP","data":{"lap":5,"durationMs":22400,"tire":"MEDIUM"}}
-{"playerId":"p-luis","type":"PENALTY","data":{"lap":6,"seconds":5,"reason":"TRACK_LIMITS"}}
-{"playerId":"p-luis","type":"CRASH","data":{"lap":7,"severity":"LOW","otherPlayerId":"p-sofi"}}
-```
-
-## Combate (`arena-clash`, versión 1.0)
-
-Dos equipos (`RED` y `BLUE`) de 5 jugadores, con reaparición. Gana el primero que llegue a 30 eliminaciones, o el que tenga más cuando se cumplan 10 minutos. Los equipos se declaran en `data.teams` de `MATCH_STARTED`.
+`MATCH_STARTED` lleva además `questions` (número de preguntas, 10) y `mode` es `"CLASSIC"`. Después de cada respuesta el juego emite `SCORE_CHANGED` con `delta` y `total`. `MATCH_FINISHED` ordena a los jugadores por puntaje final en `results`.
 
 | Tipo | `playerId` | Claves de `data` |
 | --- | --- | --- |
-| `DAMAGE_DEALT` | atacante | `targetId`, `weapon` (strings), `amount`, `distanceM` (números), `headshot` (booleano) |
-| `PLAYER_ELIMINATED` | quien elimina | `victimId`, `weapon` (strings), `distanceM` (número), `assistIds` (lista, puede ir vacía) |
-| `ITEM_PICKED` | quien recoge | `itemId` (string), `itemType` (`WEAPON`, `HEALTH` o `ARMOR`) |
-| `OBJECTIVE_CAPTURED` | quien captura | `objectiveId`, `teamId` (strings) |
-| `PLAYER_RESPAWNED` | quien reaparece | ninguna |
+| `QUESTION_SHOWN` | null | `questionId` (string), `number` (1 a 10), `category` (`CIENCIA`, `HISTORIA`, `DEPORTES`, `GEOGRAFIA` o `ENTRETENIMIENTO`), `difficulty` (`EASY`, `MEDIUM` o `HARD`), `timeLimitMs` (número) |
+| `ANSWER_SUBMITTED` | quien responde | `questionId` (string), `option` (`A`, `B`, `C` o `D`), `correct` (booleano), `responseMs` (número) |
+| `ANSWER_TIMEOUT` | quien no respondió a tiempo | `questionId` (string) |
+| `QUESTION_CLOSED` | null | `questionId`, `correctOption` (strings), `correctCount` (cuántos jugadores acertaron) |
 
 ```json
-{"playerId":null,"type":"MATCH_STARTED","data":{"players":["p-kev","p-gabo","p-dani","p-mari"],"mode":"TEAM_DEATHMATCH","teams":{"RED":["p-kev","p-gabo"],"BLUE":["p-dani","p-mari"]},"map":"Foundry"}}
-{"playerId":"p-kev","type":"DAMAGE_DEALT","data":{"targetId":"p-dani","weapon":"RIFLE","amount":42,"distanceM":41.5,"headshot":true}}
-{"playerId":"p-kev","type":"PLAYER_ELIMINATED","data":{"victimId":"p-dani","weapon":"RIFLE","distanceM":41.5,"assistIds":["p-gabo"]}}
-{"playerId":"p-mari","type":"ITEM_PICKED","data":{"itemId":"it-17","itemType":"WEAPON"}}
-{"playerId":"p-gabo","type":"OBJECTIVE_CAPTURED","data":{"objectiveId":"obj-B","teamId":"RED"}}
-{"playerId":"p-dani","type":"PLAYER_RESPAWNED","data":{}}
+{"playerId":null,"type":"QUESTION_SHOWN","data":{"questionId":"q-017","number":1,"category":"CIENCIA","difficulty":"MEDIUM","timeLimitMs":15000}}
+{"playerId":"p-ana","type":"ANSWER_SUBMITTED","data":{"questionId":"q-017","option":"C","correct":true,"responseMs":4320}}
+{"playerId":"p-sofi","type":"ANSWER_TIMEOUT","data":{"questionId":"q-017"}}
+{"playerId":null,"type":"QUESTION_CLOSED","data":{"questionId":"q-017","correctOption":"C","correctCount":2}}
 ```
 
-## Ajedrez (`chess-lite`, versión 1.0)
+## Snake (`snake`, versión 1.0)
 
-No tiene analizador propio en Scala. Existe para demostrar que un juego registrado solo con un archivo de configuración ya recibe las estadísticas generales. Usa además `TURN_STARTED`, `TURN_ENDED` y `SCORE_CHANGED` (valor del material capturado).
+Un jugador con 3 vidas. La serpiente crece al comer, sube de nivel cada 5 frutas y la partida termina cuando pierde la última vida. Prefijo de `matchId`: `sn-`.
+
+`MATCH_STARTED` lleva `players` con un solo jugador, `mode` `"CLASSIC"`, `lives` (3) y, opcional, `grid` (por ejemplo `"20x20"`). `SCORE_CHANGED` es opcional. `MATCH_FINISHED` tiene un solo resultado con `placement` 1 y, opcional, `finalScore`.
 
 | Tipo | `playerId` | Claves de `data` |
 | --- | --- | --- |
-| `MOVE` | quien mueve | `turn` (número), `from`, `to`, `notation` (strings), `thinkMs` (número), `capture` (booleano) |
+| `FOOD_EATEN` | el jugador | `foodType` (`APPLE`, `GOLDEN` o `BONUS`), `length` (largo después de comer), `points` (números) |
+| `POWERUP_PICKED` | el jugador | `powerup` (`SPEED`, `SLOW`, `SHIELD` o `DOUBLE_POINTS`), `durationMs` (número) |
+| `LEVEL_UP` | el jugador | `level`, `speed` (números) |
+| `SNAKE_DIED` | el jugador | `cause` (`WALL`, `SELF` u `OBSTACLE`), `length`, `livesLeft` (números) |
+| `PLAYER_RESPAWNED` | el jugador | `livesLeft` (número) |
 
 ```json
-{"playerId":"p-ana","type":"MOVE","data":{"turn":1,"from":"e2","to":"e4","notation":"e4","thinkMs":4200,"capture":false}}
+{"playerId":"p-kev","type":"FOOD_EATEN","data":{"foodType":"APPLE","length":4,"points":10}}
+{"playerId":"p-kev","type":"POWERUP_PICKED","data":{"powerup":"SLOW","durationMs":5000}}
+{"playerId":"p-kev","type":"LEVEL_UP","data":{"level":2,"speed":1.2}}
+{"playerId":"p-kev","type":"SNAKE_DIED","data":{"cause":"SELF","length":11,"livesLeft":2}}
+{"playerId":"p-kev","type":"PLAYER_RESPAWNED","data":{"livesLeft":2}}
 ```
+
+## Blackjack (`blackjack`, versión 1.0)
+
+De 2 a 4 jugadores contra la casa, 10 rondas, 1000 fichas iniciales. La casa no es un jugador: sus eventos llevan `playerId` null. Prefijo de `matchId`: `bj-`.
+
+`MATCH_STARTED` lleva además `startingChips` (1000) y `rounds` (10). `MATCH_FINISHED` ordena a los jugadores por fichas finales. Un jugador que se queda sin fichas sale con `PLAYER_LEFT` y `reason` `"NO_CHIPS"`.
+
+| Tipo | `playerId` | Claves de `data` |
+| --- | --- | --- |
+| `ROUND_STARTED` | null | `round` (número) |
+| `BET_PLACED` | el jugador | `round`, `amount`, `chipsBefore` (números) |
+| `CARD_DEALT` | el jugador | `round` (número), `card` (por ejemplo `"KS"`, `"10H"`, `"AD"`), `handValue` (número) |
+| `DEALER_CARD` | null | `round` (número), `card` (string), `hidden` (booleano), `dealerValue` (número) |
+| `DECISION` | el jugador | `round`, `handValue` (números). El campo `action` del sobre dice la decisión: `HIT`, `STAND` o `DOUBLE` |
+| `BUST` | el jugador | `round`, `handValue` (números) |
+| `BLACKJACK` | el jugador | `round` (número) |
+| `HAND_RESULT` | el jugador | `round` (número), `result` (`WIN`, `LOSE` o `PUSH`), `payout` (ganancia neta de la mano, negativa si perdió), `chips` (fichas después de la mano) |
+
+El dealer se pasa cuando su último `DEALER_CARD` de la ronda tiene `dealerValue` mayor que 21.
+
+```json
+{"playerId":null,"type":"ROUND_STARTED","data":{"round":1}}
+{"playerId":"p-mari","type":"BET_PLACED","data":{"round":1,"amount":100,"chipsBefore":1000}}
+{"playerId":"p-mari","type":"CARD_DEALT","data":{"round":1,"card":"10H","handValue":10}}
+{"playerId":null,"type":"DEALER_CARD","data":{"round":1,"card":"6S","hidden":false,"dealerValue":6}}
+{"playerId":"p-mari","type":"DECISION","action":"DOUBLE","data":{"round":1,"handValue":11}}
+{"playerId":"p-gabo","type":"BUST","data":{"round":1,"handValue":24}}
+{"playerId":"p-mari","type":"BLACKJACK","data":{"round":4}}
+{"playerId":"p-mari","type":"HAND_RESULT","data":{"round":1,"result":"WIN","payout":200,"chips":1200}}
+```
+
+### Claves propias en los eventos generales
+
+Algunos juegos piden claves extra en eventos generales: `questions` en el `MATCH_STARTED` de Trivia, `lives` en el de Snake, `startingChips` y `rounds` en el de Blackjack. Son parte del formato y los juegos tienen que enviarlas. El `ingestor` no las valida, porque un juego no puede redefinir un tipo general en su configuración; el `analyzer` las lee y, si faltan, usa los valores por defecto (10 preguntas, 3 vidas, 1000 fichas y 10 rondas).
 
 ## Configuración de un juego
 
@@ -144,12 +167,12 @@ Cada archivo de `configs/games/` dice qué tipos acepta un juego. Al cargar, el 
 
 ```json
 {
-  "gameId": "racing-pro",
+  "gameId": "snake",
   "versions": ["1.0"],
   "events": {
-    "CRASH": {
+    "SNAKE_DIED": {
       "playerRequired": true,
-      "data": { "lap": "number", "severity": "string" }
+      "data": { "cause": "string", "length": "number", "livesLeft": "number" }
     }
   }
 }
@@ -160,7 +183,7 @@ Cada archivo de `configs/games/` dice qué tipos acepta un juego. Al cargar, el 
 - Las claves opcionales no se listan.
 - Un juego no puede redefinir un tipo de `_common.json`. Si lo hace, el `ingestor` no arranca.
 
-El `ingestor` solo revisa que la clave exista y tenga el tipo JSON correcto. No revisa los valores permitidos de un string, como `tire` o `itemType`. Esos valores están documentados aquí para quien produce eventos, y Scala ignora los que no reconoce.
+El `ingestor` solo revisa que la clave exista y tenga el tipo JSON correcto. No revisa los valores permitidos de un string, como `category` o `cause`. Esos valores están documentados aquí para quien produce eventos, y Scala ignora los que no reconoce.
 
 ## Códigos de rechazo
 

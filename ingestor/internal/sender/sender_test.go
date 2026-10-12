@@ -77,7 +77,7 @@ func newSender(t *testing.T, url string, matchIDs ...string) (*Sender, *state.Re
 }
 
 func batch(id string, status model.BatchStatus) model.MatchBatch {
-	return model.MatchBatch{BatchID: "b-" + id, MatchID: id, GameID: "racing-pro", Status: status, Events: []model.Event{}}
+	return model.MatchBatch{BatchID: "b-" + id, MatchID: id, GameID: "snake", Status: status, Events: []model.Event{}}
 }
 
 func stateOf(reg *state.Registry, id string) state.MatchStatus {
@@ -88,42 +88,42 @@ func stateOf(reg *state.Registry, id string) state.MatchStatus {
 func TestRetriesThenSucceeds(t *testing.T) {
 	for _, failure := range []int{http.StatusInternalServerError, http.StatusTooManyRequests} {
 		f := newFakeAnalyzer(t, failure, failure, http.StatusOK)
-		s, reg, ob := newSender(t, f.srv.URL, "rp-1")
-		s.deliver(context.Background(), batch("rp-1", model.StatusComplete))
+		s, reg, ob := newSender(t, f.srv.URL, "sn-1")
+		s.deliver(context.Background(), batch("sn-1", model.StatusComplete))
 
-		if f.calls.Load() != 3 || stateOf(reg, "rp-1") != state.StatusSent || ob.Size() != 0 {
-			t.Fatalf("status %d: calls=%d state=%s outbox=%d", failure, f.calls.Load(), stateOf(reg, "rp-1"), ob.Size())
+		if f.calls.Load() != 3 || stateOf(reg, "sn-1") != state.StatusSent || ob.Size() != 0 {
+			t.Fatalf("status %d: calls=%d state=%s outbox=%d", failure, f.calls.Load(), stateOf(reg, "sn-1"), ob.Size())
 		}
 	}
 }
 
 func TestPartialBatchIsMarkedPartialSent(t *testing.T) {
 	f := newFakeAnalyzer(t, http.StatusOK)
-	s, reg, _ := newSender(t, f.srv.URL, "rp-2")
-	s.deliver(context.Background(), batch("rp-2", model.StatusPartial))
-	if stateOf(reg, "rp-2") != state.StatusPartialSent || s.Sent() != 1 {
-		t.Fatalf("state=%s sent=%d", stateOf(reg, "rp-2"), s.Sent())
+	s, reg, _ := newSender(t, f.srv.URL, "sn-2")
+	s.deliver(context.Background(), batch("sn-2", model.StatusPartial))
+	if stateOf(reg, "sn-2") != state.StatusPartialSent || s.Sent() != 1 {
+		t.Fatalf("state=%s sent=%d", stateOf(reg, "sn-2"), s.Sent())
 	}
 }
 
 func TestBadRequestIsNotRetried(t *testing.T) {
 	f := newFakeAnalyzer(t, http.StatusBadRequest)
-	s, reg, ob := newSender(t, f.srv.URL, "rp-3")
-	s.deliver(context.Background(), batch("rp-3", model.StatusComplete))
-	if f.calls.Load() != 1 || stateOf(reg, "rp-3") != state.StatusSendFailed || ob.Size() != 0 {
-		t.Fatalf("calls=%d state=%s outbox=%d", f.calls.Load(), stateOf(reg, "rp-3"), ob.Size())
+	s, reg, ob := newSender(t, f.srv.URL, "sn-3")
+	s.deliver(context.Background(), batch("sn-3", model.StatusComplete))
+	if f.calls.Load() != 1 || stateOf(reg, "sn-3") != state.StatusSendFailed || ob.Size() != 0 {
+		t.Fatalf("calls=%d state=%s outbox=%d", f.calls.Load(), stateOf(reg, "sn-3"), ob.Size())
 	}
 }
 
 func TestExhaustedRetriesGoToOutbox(t *testing.T) {
 	f := newFakeAnalyzer(t, http.StatusServiceUnavailable)
-	s, reg, ob := newSender(t, f.srv.URL, "rp-4")
-	s.deliver(context.Background(), batch("rp-4", model.StatusComplete))
+	s, reg, ob := newSender(t, f.srv.URL, "sn-4")
+	s.deliver(context.Background(), batch("sn-4", model.StatusComplete))
 	if f.calls.Load() != 4 { // first attempt + 3 retries
 		t.Errorf("calls = %d, want 4", f.calls.Load())
 	}
-	if stateOf(reg, "rp-4") != state.StatusSendFailed || ob.Size() != 1 {
-		t.Fatalf("state=%s outbox=%d", stateOf(reg, "rp-4"), ob.Size())
+	if stateOf(reg, "sn-4") != state.StatusSendFailed || ob.Size() != 1 {
+		t.Fatalf("state=%s outbox=%d", stateOf(reg, "sn-4"), ob.Size())
 	}
 }
 
@@ -131,8 +131,8 @@ func TestAnalyzerDownGoesToOutbox(t *testing.T) {
 	f := newFakeAnalyzer(t, http.StatusOK)
 	url := f.srv.URL
 	f.srv.Close() // connection refused
-	s, _, ob := newSender(t, url, "rp-5")
-	s.deliver(context.Background(), batch("rp-5", model.StatusComplete))
+	s, _, ob := newSender(t, url, "sn-5")
+	s.deliver(context.Background(), batch("sn-5", model.StatusComplete))
 	if ob.Size() != 1 {
 		t.Fatalf("outbox = %d, want 1", ob.Size())
 	}
@@ -142,7 +142,7 @@ func TestAnalyzerDownGoesToOutbox(t *testing.T) {
 // once it is back, the retrier delivers them and empties the outbox.
 func TestOutboxIsDeliveredWhenAnalyzerReturns(t *testing.T) {
 	f := newFakeAnalyzer(t, http.StatusServiceUnavailable)
-	ids := []string{"rp-a", "rp-b", "rp-c"}
+	ids := []string{"sn-a", "sn-b", "sn-c"}
 	s, reg, ob := newSender(t, f.srv.URL, ids...)
 
 	batches := make(chan model.MatchBatch, len(ids))
@@ -183,10 +183,10 @@ func TestOutboxIsDeliveredWhenAnalyzerReturns(t *testing.T) {
 
 func TestShutdownParksWithoutCalling(t *testing.T) {
 	f := newFakeAnalyzer(t, http.StatusOK)
-	s, _, ob := newSender(t, f.srv.URL, "rp-6")
+	s, _, ob := newSender(t, f.srv.URL, "sn-6")
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	s.deliver(ctx, batch("rp-6", model.StatusPartial))
+	s.deliver(ctx, batch("sn-6", model.StatusPartial))
 	if f.calls.Load() != 0 || ob.Size() != 1 {
 		t.Fatalf("calls=%d outbox=%d", f.calls.Load(), ob.Size())
 	}
@@ -197,10 +197,10 @@ func TestOutboxKeepsBatchRewrittenDuringRetry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = ob.Save(batch("rp-7", model.StatusPartial))
+	_ = ob.Save(batch("sn-7", model.StatusPartial))
 	listed, _ := ob.entries()
 
-	newer := batch("rp-7", model.StatusComplete)
+	newer := batch("sn-7", model.StatusComplete)
 	newer.Players = []string{"p-ana"} // different size
 	_ = ob.Save(newer)
 	_ = ob.removeIfUnchanged(listed[0])

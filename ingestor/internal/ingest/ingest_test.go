@@ -83,10 +83,10 @@ func newUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-// lapEvent builds a valid LAP_COMPLETED line, with its trailing \n.
-func lapEvent(matchID string, seq int) string {
-	return fmt.Sprintf(`{"schemaVersion":"1.0","eventId":"%s","timestamp":"2026-09-10T14:01:32.410Z","gameId":"racing-pro","gameVersion":"1.0","matchId":"%s","seq":%d,"playerId":"p-ana","type":"LAP_COMPLETED","data":{"lap":%d,"lapTimeMs":92410,"position":7,"topSpeedKmh":318.4}}`+"\n",
-		newUUID(), matchID, seq, seq)
+// foodEvent builds a valid snake FOOD_EATEN line, with its trailing \n.
+func foodEvent(matchID string, seq int) string {
+	return fmt.Sprintf(`{"schemaVersion":"1.0","eventId":"%s","timestamp":"2026-09-10T14:01:32.410Z","gameId":"snake","gameVersion":"1.0","matchId":"%s","seq":%d,"playerId":"p-kev","type":"FOOD_EATEN","data":{"foodType":"APPLE","length":%d,"points":10}}`+"\n",
+		newUUID(), matchID, seq, 3+seq)
 }
 
 func appendTo(t *testing.T, path, content string) {
@@ -129,18 +129,18 @@ func expectNone(t *testing.T, ch <-chan model.Event, during time.Duration) {
 }
 
 func (e *env) eventsFile(name string) string {
-	return filepath.Join(e.dataDir, "events", "racing-pro", name)
+	return filepath.Join(e.dataDir, "events", "snake", name)
 }
 
 func TestAppendedLinesArriveQuickly(t *testing.T) {
 	e := newEnv(t, 100)
-	file := e.eventsFile("rp-1.jsonl")
-	appendTo(t, file, lapEvent("rp-1", 1)+lapEvent("rp-1", 2))
+	file := e.eventsFile("sn-1.jsonl")
+	appendTo(t, file, foodEvent("sn-1", 1)+foodEvent("sn-1", 2))
 	e.startWatcher(t, time.Minute)
 	expectEvents(t, e.input, 2, 2*time.Second)
 
 	start := time.Now()
-	appendTo(t, file, lapEvent("rp-1", 3))
+	appendTo(t, file, foodEvent("sn-1", 3))
 	got := expectEvents(t, e.input, 1, 2*time.Second)
 	if got[0].Seq != 3 {
 		t.Errorf("seq = %d, want 3", got[0].Seq)
@@ -150,8 +150,8 @@ func TestAppendedLinesArriveQuickly(t *testing.T) {
 
 func TestIncompleteLineIsReadOnceComplete(t *testing.T) {
 	e := newEnv(t, 100)
-	file := e.eventsFile("rp-2.jsonl")
-	line := lapEvent("rp-2", 1)
+	file := e.eventsFile("sn-2.jsonl")
+	line := foodEvent("sn-2", 1)
 	half := len(line) / 2
 
 	e.startWatcher(t, time.Minute)
@@ -168,8 +168,8 @@ func TestIncompleteLineIsReadOnceComplete(t *testing.T) {
 
 func TestRestartDoesNotReprocess(t *testing.T) {
 	e := newEnv(t, 100)
-	file := e.eventsFile("rp-3.jsonl")
-	appendTo(t, file, lapEvent("rp-3", 1)+lapEvent("rp-3", 2)+lapEvent("rp-3", 3))
+	file := e.eventsFile("sn-3.jsonl")
+	appendTo(t, file, foodEvent("sn-3", 1)+foodEvent("sn-3", 2)+foodEvent("sn-3", 3))
 	_, stop := e.startWatcher(t, time.Minute)
 	expectEvents(t, e.input, 3, 2*time.Second)
 	stop()
@@ -181,7 +181,7 @@ func TestRestartDoesNotReprocess(t *testing.T) {
 	e2.startWatcher(t, time.Minute)
 	expectNone(t, e2.input, 10*poll)
 
-	appendTo(t, file, lapEvent("rp-3", 4))
+	appendTo(t, file, foodEvent("sn-3", 4))
 	if got := expectEvents(t, e2.input, 1, 2*time.Second); got[0].Seq != 4 {
 		t.Errorf("seq = %d, want 4", got[0].Seq)
 	}
@@ -189,12 +189,12 @@ func TestRestartDoesNotReprocess(t *testing.T) {
 
 func TestTruncatedFileIsReadFromStart(t *testing.T) {
 	e := newEnv(t, 100)
-	file := e.eventsFile("rp-4.jsonl")
-	appendTo(t, file, lapEvent("rp-4", 1)+lapEvent("rp-4", 2))
+	file := e.eventsFile("sn-4.jsonl")
+	appendTo(t, file, foodEvent("sn-4", 1)+foodEvent("sn-4", 2))
 	e.startWatcher(t, time.Minute)
 	expectEvents(t, e.input, 2, 2*time.Second)
 
-	if err := os.WriteFile(file, []byte(lapEvent("rp-4", 9)), 0o644); err != nil {
+	if err := os.WriteFile(file, []byte(foodEvent("sn-4", 9)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if got := expectEvents(t, e.input, 1, 2*time.Second); got[0].Seq != 9 {
@@ -206,8 +206,8 @@ func TestTruncatedFileIsReadFromStart(t *testing.T) {
 // read again but Dedup drops them, so rereading is safe.
 func TestReplacedFileRereadIsSafe(t *testing.T) {
 	e := newEnv(t, 100)
-	file := e.eventsFile("rp-5.jsonl")
-	old := lapEvent("rp-5", 1) + lapEvent("rp-5", 2)
+	file := e.eventsFile("sn-5.jsonl")
+	old := foodEvent("sn-5", 1) + foodEvent("sn-5", 2)
 	appendTo(t, file, old)
 	e.startWatcher(t, time.Minute)
 	expectEvents(t, e.input, 2, 2*time.Second)
@@ -215,7 +215,7 @@ func TestReplacedFileRereadIsSafe(t *testing.T) {
 	if err := os.Remove(file); err != nil {
 		t.Fatal(err)
 	}
-	appendTo(t, file, old+lapEvent("rp-5", 3))
+	appendTo(t, file, old+foodEvent("sn-5", 3))
 	if got := expectEvents(t, e.input, 1, 2*time.Second); got[0].Seq != 3 {
 		t.Errorf("seq = %d, want 3", got[0].Seq)
 	}
@@ -230,23 +230,23 @@ func TestReplacedFileRereadIsSafe(t *testing.T) {
 
 func TestIdleTailerIsReopenedWhenFileGrows(t *testing.T) {
 	e := newEnv(t, 100)
-	file := e.eventsFile("rp-6.jsonl")
-	appendTo(t, file, lapEvent("rp-6", 1))
+	file := e.eventsFile("sn-6.jsonl")
+	appendTo(t, file, foodEvent("sn-6", 1))
 	e.startWatcher(t, 5*poll)
 	expectEvents(t, e.input, 1, 2*time.Second)
 	time.Sleep(15 * poll) // tailer closes for inactivity
 
-	appendTo(t, file, lapEvent("rp-6", 2))
+	appendTo(t, file, foodEvent("sn-6", 2))
 	expectEvents(t, e.input, 1, 2*time.Second)
 }
 
 // With a full channel the tailer waits; nothing is lost.
 func TestBackpressureLosesNothing(t *testing.T) {
 	e := newEnv(t, 1)
-	file := e.eventsFile("rp-7.jsonl")
+	file := e.eventsFile("sn-7.jsonl")
 	var lines strings.Builder
 	for seq := 1; seq <= 20; seq++ {
-		lines.WriteString(lapEvent("rp-7", seq))
+		lines.WriteString(foodEvent("sn-7", seq))
 	}
 	appendTo(t, file, lines.String())
 	e.startWatcher(t, time.Minute)
@@ -286,19 +286,21 @@ func post(t *testing.T, e *env, body string) (*httptest.ResponseRecorder, PostRe
 
 func TestPostExamplesArray(t *testing.T) {
 	e := newEnv(t, 100)
-	rec, res := post(t, e, readSamplesArray(t))
-	if rec.Code != http.StatusAccepted || res.Accepted != 22 || res.Rejected != 0 {
-		t.Fatalf("status %d, result %+v", rec.Code, res)
+	body := readSamplesArray(t)
+	want := strings.Count(body, `"eventId"`) // one per sample line
+	rec, res := post(t, e, body)
+	if rec.Code != http.StatusAccepted || res.Accepted != want || res.Rejected != 0 {
+		t.Fatalf("status %d, result %+v, want %d accepted", rec.Code, res, want)
 	}
-	if len(e.input) != 22 {
-		t.Errorf("%d events queued, want 22", len(e.input))
+	if len(e.input) != want {
+		t.Errorf("%d events queued, want %d", len(e.input), want)
 	}
 }
 
 func TestPostReportsEachRejection(t *testing.T) {
 	e := newEnv(t, 100)
-	valid := strings.TrimSpace(lapEvent("rp-8", 1))
-	unknownType := strings.Replace(strings.TrimSpace(lapEvent("rp-8", 2)), "LAP_COMPLETED", "BOOST_USED", 1)
+	valid := strings.TrimSpace(foodEvent("sn-8", 1))
+	unknownType := strings.Replace(strings.TrimSpace(foodEvent("sn-8", 2)), "FOOD_EATEN", "BOOST_USED", 1)
 	body := "[" + valid + "," + unknownType + "," + valid + "]"
 
 	rec, res := post(t, e, body)
@@ -339,7 +341,7 @@ func TestPostReportsEachRejection(t *testing.T) {
 func TestPostEdgeCases(t *testing.T) {
 	t.Run("single object", func(t *testing.T) {
 		e := newEnv(t, 10)
-		if rec, res := post(t, e, lapEvent("rp-9", 1)); rec.Code != http.StatusAccepted || res.Accepted != 1 {
+		if rec, res := post(t, e, foodEvent("sn-9", 1)); rec.Code != http.StatusAccepted || res.Accepted != 1 {
 			t.Fatalf("status %d, result %+v", rec.Code, res)
 		}
 	})
@@ -360,7 +362,7 @@ func TestPostEdgeCases(t *testing.T) {
 	t.Run("buffer full", func(t *testing.T) {
 		e := newEnv(t, 1)
 		e.input <- model.Event{}
-		rec, _ := post(t, e, lapEvent("rp-9", 1))
+		rec, _ := post(t, e, foodEvent("sn-9", 1))
 		if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") != "1" {
 			t.Fatalf("status %d, Retry-After %q", rec.Code, rec.Header().Get("Retry-After"))
 		}

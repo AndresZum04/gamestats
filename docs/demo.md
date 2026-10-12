@@ -22,7 +22,7 @@ La demo dura menos de 10 minutos y muestra el sistema completo: instalación, CI
 | 2 | CI en verde y artefactos | 1:00 |
 | 3 | `make demo` en vivo | 2:00 |
 | 4 | Estadísticas del ingestor | 0:45 |
-| 5 | Tablero: una carrera y un combate | 1:30 |
+| 5 | Tablero: trivia, snake y blackjack | 1:30 |
 | 6 | Un patrón y su evidencia | 1:00 |
 | 7 | Tolerancia a fallos | 1:15 |
 | 8 | Despliegue en Azure | 0:45 |
@@ -87,7 +87,7 @@ while ($true) { cls; Get-ChildItem gamestats-data\events -Recurse -Filter *.json
 
 Qué decir:
 - El script carga `demo-full.jsonl` copiándolo a la carpeta de eventos: así se conectará la consola de juegos de la segunda parte.
-- Después el simulador escribe 16 partidas en paralelo, una goroutine por partida, cada una en su propio archivo.
+- Después el simulador escribe 18 partidas en paralelo (4 de cada juego y las 6 de escenario), una goroutine por partida, cada una en su propio archivo.
 - El ingestor revisa la carpeta cada segundo y lee solo las líneas nuevas de cada archivo.
 - Al final el script imprime partidas por juego, el top 3 de cada leaderboard, los patrones y los rechazos.
 
@@ -105,9 +105,10 @@ Qué decir:
 
 En `http://localhost:8081/dashboard`:
 
-1. Pestaña Carreras, abrir `rp-scn-comeback`. Mostrar el gráfico de tiempos por vuelta (se ve el choque de p-ana en la vuelta 2), la tabla con consistencia, posiciones ganadas e impacto de incidentes, y la vuelta rápida.
-2. Pestaña Combate, abrir `ac-scn-spree`. Mostrar el marcador, el MVP, la primera sangre, el gráfico de eliminaciones por equipo y la tabla con K/D y headshots.
-3. Mostrar el leaderboard y los filtros de patrones recientes.
+1. Pestaña Trivia, abrir `tv-scn-comeback`. Mostrar los aciertos por jugador y el % por categoría, la pregunta más difícil y el patrón P2: p-luis iba solo en el último lugar después de la pregunta 2 y ganó. En el resumen, la categoría más difícil del juego (T5).
+2. Pestaña Snake, abrir `sn-scn-frenzy`. Mostrar el gráfico del largo con las tres muertes marcadas, las frutas por vida (12, 6, 6) y, en el resumen, el récord de largo y la causa de muerte más común (S5).
+3. Pestaña Blackjack, abrir `bj-scn-allin`. Mostrar el gráfico de fichas por ronda: p-gabo baja de 1000 a 700 en tres rondas, apuesta todo y sube a 1400. Mostrar la ganancia de la casa y la apuesta más alta (B5).
+4. Mostrar el leaderboard de cada juego (victoria = primer lugar, con su desempate) y los filtros de patrones recientes.
 
 Qué decir:
 - Todo lo que se ve sale de funciones puras en Scala. El tablero se refresca cada 5 s sin recargar la página.
@@ -115,18 +116,18 @@ Qué decir:
 ## 6. Un patrón y su evidencia (1:00)
 
 ```bash
-curl -s localhost:8081/api/v1/patterns?patternId=P3 | head -c 600
+curl -s "localhost:8081/api/v1/patterns?patternId=P3" | head -c 600
 ```
 
 Copiar uno de los `eventId` de `evidence` y buscarlo en los eventos originales:
 
 ```bash
-grep '<eventId>' gamestats-data/events/*.jsonl
+grep -r '<eventId>' gamestats-data/events/
 ```
 
 Qué decir:
 - Cada patrón guarda los eventos que lo prueban.
-- P3 usa un `foldLeft` sobre un estado inmutable que recorre eliminaciones y muertes en orden.
+- P3 (frenesí) parte las frutas por vida y recorre cada vida con `sliding(5)`: los cinco `eventId` de `evidence` son las cinco frutas comidas en 15 s o menos.
 - Las 6 partidas `*-scn-*` del simulador fuerzan cada patrón exactamente una vez, y hay pruebas que lo verifican.
 
 ## 7. Tolerancia a fallos (1:15)
@@ -172,13 +173,13 @@ Qué decir:
 | Concurrencia en Go | 6.1 | Goroutine por archivo y por partida, canales, pool de senders; pruebas con `-race` |
 | Go prepara y envía a Scala | 6.1, 7 | `MatchBatch` por HTTP (`sender/sender.go`) |
 | Scala recibe y transforma con colecciones funcionales | 6.2 | `analyzer/.../codec/Typed.scala`, `analysis/` |
-| Scala calcula estadísticas | 6.2 | [estadisticas.md](estadisticas.md): G1 a G6, R1 a R7, A1 a A6 |
+| Scala calcula estadísticas | 6.2 | [estadisticas.md](estadisticas.md): G1 a G6, T1 a T5, S1 a S5, B1 a B5 |
 | Scala detecta patrones | 6.2 | `analysis/patterns/`: P1 a P6 |
 | Resultados estructurados consultables | 6.2, 9 | `results/*.json`, API REST y `/dashboard` |
 | Módulos independientes y comunicación documentada | 7 | [arquitectura.md](arquitectura.md), `docker-compose.yml` |
 | Fuente simulada realista y con partidas en paralelo | 8 | `simulator/` (goroutine por partida, modo stream) |
-| Estadística por jugador, por partida y combinada | 9 | R1 y A1 / R5 y A3 / R6, R7, A4 y A5 |
-| Regla basada en secuencia de eventos | 9 | P1 a P6 |
+| Estadística por jugador, por partida y combinada | 9 | T1, S1 y B1 / T4 y B5 / T3, S4 y B4 |
+| Regla basada en secuencia de eventos | 9 | P1 a P6, dos por juego |
 | Git con historial | 10 | `git log` |
 | Construcción reproducible y Docker | 10 | Dockerfiles multietapa, `docker-compose.yml` |
 | CI/CD con compilación y manejo de contenedores y archivos | 10 | [cicd.md](cicd.md): `ci.yml` y `cd.yml`, artefacto `ci-artifacts.tar.gz` |
@@ -187,6 +188,6 @@ Qué decir:
 | Justificación imperativo frente a funcional | 13 | [paradigmas.md](paradigmas.md) |
 | Demostración funcional | 11 | Este guion y `scripts/demo.sh` |
 | Lectura casi en tiempo real de archivos que se actualizan | video | `DirWatcher` y `FileTailer`; el simulador en modo stream |
-| Formato válido para los juegos de la segunda parte | video | `schemaVersion`, eventos genéricos, `chess-lite` y [consola-futura.md](consola-futura.md) |
+| Formato válido para los juegos de la segunda parte | video | `schemaVersion`, eventos genéricos, juegos simples de programar ([juegos.md](juegos.md)), `card-duel` como prueba de un juego registrado solo por configuración y [consola-futura.md](consola-futura.md) |
 | Código fuente e instalación simple en una máquina de terceros | video | `install.sh`, `install.ps1` y el job `install-test` |
 | Resultados escritos para un tablero futuro | video | `results/` y `/dashboard` |

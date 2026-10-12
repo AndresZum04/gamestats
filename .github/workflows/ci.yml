@@ -156,7 +156,7 @@ jobs:
       - name: Simulador con semilla al azar (partidas nuevas)
         run: |
           docker compose --profile demo run --rm simulator
-          EXPECTED_MATCHES=28 scripts/smoke-test.sh
+          EXPECTED_MATCHES=30 scripts/smoke-test.sh
 
       - name: Logs si algo falló
         if: failure()

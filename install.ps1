@@ -60,7 +60,13 @@ if (-not $DataDir) {
 }
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
 $DataDir = (Resolve-Path $DataDir).Path
-foreach ($sub in "events\racing-pro", "events\arena-clash", "events\chess-lite", "results", "rejected", "outbox", "state") {
+# Una carpeta de eventos por juego registrado en configs\games (sin
+# _common.json): agregar un juego no obliga a tocar el instalador.
+$games = Get-ChildItem -Path "configs\games" -Filter "*.json" | Where-Object { $_.BaseName -ne "_common" }
+foreach ($game in $games) {
+  New-Item -ItemType Directory -Force -Path (Join-Path $DataDir "events\$($game.BaseName)") | Out-Null
+}
+foreach ($sub in "results", "rejected", "outbox", "state") {
   New-Item -ItemType Directory -Force -Path (Join-Path $DataDir $sub) | Out-Null
 }
 # Docker Desktop acepta rutas de Windows con barras normales: C:/...

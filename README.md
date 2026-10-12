@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml)
 
-GameStats recibe eventos de partidas de videojuegos, los organiza en Go y los analiza en Scala. Calcula estadísticas por jugador, por partida y por juego, detecta patrones como remontadas, rachas o venganzas, y muestra todo en un tablero web.
+GameStats recibe eventos de partidas de videojuegos, los organiza en Go y los analiza en Scala. Calcula estadísticas por jugador, por partida y por juego, detecta patrones como remontadas, rachas o un all-in después de perder, y muestra todo en un tablero web. Trae tres juegos: trivia, snake y blackjack.
 
 Proyecto 1 del curso Lenguajes de Programación, Instituto Tecnológico de Costa Rica.
 
@@ -18,9 +18,9 @@ flowchart LR
   ana --> tab[tablero /dashboard<br/>y API REST]
 ```
 
-- simulator (Go): genera partidas de carreras, combate y ajedrez en paralelo y escribe sus eventos en una carpeta compartida, como lo hará la consola de juegos de la segunda parte del curso.
+- simulator (Go): genera partidas de trivia, snake y blackjack en paralelo y escribe sus eventos en una carpeta compartida, como lo hará la consola de juegos de la segunda parte del curso.
 - ingestor (Go): lee la carpeta de forma continua, valida cada evento, agrupa por partida con una goroutine por partida y envía cada partida completa al analyzer, con reintentos y un outbox en disco.
-- analyzer (Scala): calcula 19 estadísticas y 6 patrones con funciones puras, guarda un JSON por partida y los sirve por REST y en el tablero.
+- analyzer (Scala): calcula 21 estadísticas y 6 patrones con funciones puras, guarda un JSON por partida y los sirve por REST y en el tablero.
 
 El detalle está en [docs/arquitectura.md](docs/arquitectura.md).
 
@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1    # Windows
 
 El instalador verifica Docker y los puertos, compila todo desde el código fuente y deja los servicios corriendo. La primera vez tarda unos minutos.
 
-Después, para generar partidas:
+Después, para generar partidas (4 de cada juego y las 6 de escenario, una por patrón):
 
 ```bash
 docker compose --profile demo run --rm simulator
@@ -79,7 +79,7 @@ El simulador tiene tres modos:
 - `--mode file --out archivo.jsonl`: escribe todo de una vez. Es reproducible: la misma semilla da el mismo archivo.
 - `--mode http --target http://localhost:8080`: envía por la API.
 
-`--help` muestra todas las opciones.
+Las banderas `--trivia`, `--snake` y `--blackjack` fijan cuántas partidas de cada juego se generan (4 por defecto). `--help` muestra todas las opciones.
 
 ## API
 
@@ -92,7 +92,7 @@ El simulador tiene tres modos:
 | analyzer | `GET /api/v1/matches?gameId=&limit=` | partidas analizadas, las más recientes primero |
 | analyzer | `GET /api/v1/matches/{id}` | análisis completo de una partida |
 | analyzer | `GET /api/v1/players/{id}` | registro de un jugador en cada juego |
-| analyzer | `GET /api/v1/games/{id}/summary` | resumen del juego: abandono, arma más efectiva, duración promedio |
+| analyzer | `GET /api/v1/games/{id}/summary` | resumen del juego: abandono, duración promedio y `gameMetrics` (categoría más difícil, récord de largo) |
 | analyzer | `GET /api/v1/games/{id}/leaderboard` | ranking del juego |
 | analyzer | `GET /api/v1/patterns?gameId=&patternId=` | patrones detectados |
 | analyzer | `GET /dashboard` | tablero web |
@@ -122,7 +122,7 @@ Tablero desplegado: *pendiente de crear la VM.*
 | Documento | Contenido |
 | --- | --- |
 | [eventos.md](docs/eventos.md) | Formato de eventos, catálogo por juego, códigos de rechazo, cómo agregar un juego |
-| [juegos.md](docs/juegos.md) | Por qué carreras y combate, y qué permite calcular cada evento |
+| [juegos.md](docs/juegos.md) | Por qué trivia, snake y blackjack, y qué permite calcular cada evento |
 | [estadisticas.md](docs/estadisticas.md) | Cada estadística y patrón con su fórmula, archivo y ejemplo real |
 | [arquitectura.md](docs/arquitectura.md) | Componentes, recorrido de un evento, concurrencia y por qué HTTP entre Go y Scala |
 | [paradigmas.md](docs/paradigmas.md) | Qué se hizo imperativo y qué funcional, y por qué |

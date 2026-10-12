@@ -22,10 +22,10 @@ class RoutesSuite extends munit.FunSuite:
       .toList
       .filter(_.trim.nonEmpty)
 
-  def batch(matchId: String = "rp-0007", gameId: String = "racing-pro"): String =
+  def batch(matchId: String = "tv-0007", gameId: String = "trivia"): String =
     s"""{"batchId":"b-1","matchId":"$matchId","gameId":"$gameId","gameVersion":"1.0","status":"COMPLETE",
-       |"startedAt":"2026-09-10T14:00:00.000Z","finishedAt":"2026-09-10T14:16:05.300Z",
-       |"players":["p-ana","p-luis","p-sofi"],"eventCount":10,"sentAt":"2026-09-10T14:16:06.000Z",
+       |"startedAt":"2026-09-10T14:00:00.000Z","finishedAt":"2026-09-10T14:04:10.000Z",
+       |"players":["p-ana","p-luis","p-sofi"],"eventCount":10,"sentAt":"2026-09-10T14:04:11.000Z",
        |"events":[${examples.take(10).mkString(",")}]}""".stripMargin
 
   def withApp[A](f: (HttpApp[IO], Path) => A): A =
@@ -44,14 +44,17 @@ class RoutesSuite extends munit.FunSuite:
     withApp { (app, dir) =>
       val (status, json) = run(app, post(batch()))
       assertEquals(status, Status.Ok)
-      assertEquals(json.hcursor.get[String]("matchId"), Right("rp-0007"))
+      assertEquals(json.hcursor.get[String]("matchId"), Right("tv-0007"))
       assertEquals(json.hcursor.get[Int]("patternsFound"), Right(0))
-      assert(Files.exists(dir.resolve("rp-0007.json")))
+      assert(Files.exists(dir.resolve("tv-0007.json")))
 
-      val (getStatus, analysis) = run(app, Request[IO](Method.GET, uri"/api/v1/matches/rp-0007"))
+      val (getStatus, analysis) = run(app, Request[IO](Method.GET, uri"/api/v1/matches/tv-0007"))
       assertEquals(getStatus, Status.Ok)
-      assertEquals(analysis.hcursor.get[Long]("durationMs"), Right(965300L))
-      assertEquals(analysis.hcursor.downField("eventsByType").get[Int]("LAP_COMPLETED"), Right(1))
+      assertEquals(analysis.hcursor.get[Long]("durationMs"), Right(250000L))
+      assertEquals(
+        analysis.hcursor.downField("eventsByType").get[Int]("ANSWER_SUBMITTED"),
+        Right(1)
+      )
     }
   }
 
@@ -59,7 +62,7 @@ class RoutesSuite extends munit.FunSuite:
     withApp { (app, dir) =>
       run(app, post(batch()))
       val reloaded = ResultStore.load(dir).unsafeRunSync()
-      assertEquals(reloaded.get("rp-0007").unsafeRunSync().map(_.durationMs), Some(965300L))
+      assertEquals(reloaded.get("tv-0007").unsafeRunSync().map(_.durationMs), Some(250000L))
     }
   }
 
@@ -82,7 +85,7 @@ class RoutesSuite extends munit.FunSuite:
     withApp { (app, dir) =>
       for body <- List(
           "{not json",
-          """{"matchId":"rp-1"}""",
+          """{"matchId":"tv-1"}""",
           batch(gameId = " "),
           batch(matchId = "../evil")
         )
@@ -108,37 +111,45 @@ class RoutesSuite extends munit.FunSuite:
     }
   }
 
-  test("aggregate endpoints answer with data for racing and combat") {
+  test("aggregate endpoints answer with data for every game") {
     import gamestats.codec.Codecs.given
     import io.circe.syntax.*
     withApp { (app, _) =>
-      List("rp-scn-comeback", "rp-scn-steady", "ac-scn-spree", "ac-scn-teamback")
+      List("tv-scn-streak", "tv-scn-comeback", "sn-scn-frenzy", "bj-scn-hot")
         .map(gamestats.fixtures.Samples.scenario)
         .foreach(b => assertEquals(run(app, post(b.asJson.noSpaces))._1, Status.Ok))
 
       def get(path: String): (Status, Json) =
         run(app, Request[IO](Method.GET, Uri.unsafeFromString(path)))
 
-      val (_, matches) = get("/api/v1/matches?gameId=arena-clash")
+      val (_, matches) = get("/api/v1/matches?gameId=trivia")
       assertEquals(matches.asArray.map(_.size), Some(2))
       assertEquals(get("/api/v1/matches?limit=1")._2.asArray.map(_.size), Some(1))
       assertEquals(
         get("/api/v1/players/p-ana")._2.hcursor.downField("games").values.map(_.size),
-        Some(2)
+        Some(1)
       )
       assertEquals(
-        get("/api/v1/games/racing-pro/leaderboard")._2.hcursor.get[String]("metric"),
-        Right("consistency")
+        get("/api/v1/games/trivia/leaderboard")._2.hcursor.get[String]("metric"),
+        Right("correctPct")
       )
       assertEquals(
-        get("/api/v1/games/arena-clash/summary")._2.hcursor.get[Int]("matches"),
+        get("/api/v1/games/trivia/summary")._2.hcursor.get[Int]("matches"),
         Right(2)
       )
+      assertEquals(
+        get("/api/v1/games/snake/summary")._2.hcursor
+          .downField("gameMetrics")
+          .downField("lengthRecord")
+          .get[String]("matchId"),
+        Right("sn-scn-frenzy")
+      )
+      // One pattern per scenario: P1, P2, P3 and P5.
       assertEquals(get("/api/v1/patterns")._2.asArray.map(_.size), Some(4))
       assertEquals(get("/api/v1/patterns?patternId=P5")._2.asArray.map(_.size), Some(1))
 
       assertEquals(get("/api/v1/players/nobody")._1, Status.NotFound)
-      assertEquals(get("/api/v1/games/chess-lite/summary")._1, Status.NotFound)
+      assertEquals(get("/api/v1/games/card-duel/summary")._1, Status.NotFound)
       for bad <- List("0", "1001", "abc") do
         assertEquals(get(s"/api/v1/matches?limit=$bad")._1, Status.BadRequest)
     }

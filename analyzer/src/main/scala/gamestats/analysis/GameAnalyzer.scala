@@ -15,6 +15,11 @@ trait GameAnalyzer:
   def gameId: String
   def analyze(batch: MatchBatch): MatchAnalysis
 
+  /** Statistics of the whole game, over every stored match of it (T5, S5). Read by the game
+    * summary; empty by default.
+    */
+  def gameMetrics(matches: List[MatchAnalysis]): Map[String, Json] = Map.empty
+
 /** A pattern detector reads the context of a match and returns what it found (possibly nothing).
   */
 type PatternDetector[E] = MatchContext[E] => List[PatternMatch]
@@ -36,7 +41,19 @@ final case class MatchContext[E](
     players: List[String],
     teams: Map[String, String],
     placements: Map[String, Int]
-)
+):
+  /** A number from MATCH_STARTED (questions, lives, startingChips...); None if it is missing. The
+    * ingestor does not check these keys, so each game falls back to its default.
+    */
+  def startNumber(key: String): Option[Double] =
+    common
+      .collectFirst { case s: MatchStarted => s.settings(key) }
+      .flatten
+      .flatMap(_.asNumber)
+      .map(_.toDouble)
+
+  /** Match duration in minutes (G2). */
+  def minutes: Double = GenericStats.durationMs(batch.events) / 60000.0
 
 object MatchContext:
   def build[E](batch: MatchBatch, toTyped: (Event, Instant) => Option[E]): MatchContext[E] =
@@ -109,8 +126,8 @@ abstract class ComposedAnalyzer[E] extends GameAnalyzer:
       patterns = Nil
     )
 
-/** Statistics shared by every game (G1 to G6), with no game specific metrics. Used for chess-lite
-  * and any game registered only by config.
+/** Statistics shared by every game (G1 to G6), with no game specific metrics. Used for any game
+  * registered only by its config.
   */
 final case class GenericAnalyzer(gameId: String) extends ComposedAnalyzer[Event]:
   protected def toTyped(e: Event, start: Instant): Option[Event] = Some(e)
@@ -120,9 +137,10 @@ object AnalyzerRegistry:
     analyzers.map(a => a.gameId -> a).toMap
 
   /** Games with their own analyzer. Adding a game = one object extending ComposedAnalyzer plus one
-    * entry here. ArenaAnalyzer is added in T14.
+    * entry here.
     */
-  val all: Map[String, GameAnalyzer] = from(List(racing.RacingAnalyzer, arena.ArenaAnalyzer))
+  val all: Map[String, GameAnalyzer] =
+    from(List(trivia.TriviaAnalyzer, snake.SnakeAnalyzer, blackjack.BlackjackAnalyzer))
 
   /** A game without its own analyzer is not an error: it gets the generic statistics.
     */

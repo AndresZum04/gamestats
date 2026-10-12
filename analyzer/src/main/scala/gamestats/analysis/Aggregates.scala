@@ -12,11 +12,10 @@ object Aggregates:
     * ranked by wins only.
     */
   val tiebreakMetric: Map[String, String] =
-    Map("racing-pro" -> "consistency", "arena-clash" -> "kd")
+    Map("trivia" -> "correctPct", "snake" -> "maxLength", "blackjack" -> "netGain")
 
-  /** A win is a podium in racing and first place everywhere else. */
-  def isWin(gameId: String, placement: Option[Int]): Boolean =
-    placement.exists(p => if gameId == "racing-pro" then p <= 3 else p == 1)
+  /** A win is first place, in every game. */
+  def isWin(placement: Option[Int]): Boolean = placement.contains(1)
 
   private def number(json: Json): Option[Double] = json.asNumber.map(_.toDouble)
 
@@ -75,7 +74,7 @@ object Aggregates:
       .view
       .mapValues(
         _.foldLeft(Record.empty)((r, s) =>
-          r.add(isWin(gameId, s.placement), metric.flatMap(metricOf(s, _)))
+          r.add(isWin(s.placement), metric.flatMap(metricOf(s, _)))
         )
       )
       .toMap
@@ -103,27 +102,14 @@ object Aggregates:
       .map { case ((p, r), i) => LeaderboardEntry(i + 1, p, r.matches, r.wins, r.avg) }
     Leaderboard(gameId, tiebreakMetric.get(gameId), entries)
 
-  /** A6: eliminations per weapon over every match of the game, most used first; ties go
-    * alphabetical.
-    */
-  def weapons(matches: List[MatchAnalysis]): List[WeaponStat] =
-    matches
-      .flatMap(_.matchMetrics.get("killsByWeapon").flatMap(_.asObject).toList.flatMap(_.toList))
-      .flatMap((w, n) => n.asNumber.flatMap(_.toInt).map(w -> _))
-      .groupBy(_._1)
-      .map((w, xs) => WeaponStat(w, xs.map(_._2).sum))
-      .toList
-      .sortBy(s => (-s.kills, s.weapon))
-
-  /** GET /api/v1/games/{gameId}/summary: G4, A6, matches and average duration. None if the game has
-    * no stored matches.
+  /** GET /api/v1/games/{gameId}/summary: G4, matches, average duration and the statistics of the
+    * game's analyzer over every match. None if the game has no stored matches.
     */
   def gameSummary(all: List[MatchAnalysis], gameId: String): Option[GameSummary] =
     val matches = all.filter(_.gameId == gameId)
     Option.when(matches.nonEmpty) {
       val entries = matches.flatMap(_.players)
       val left = entries.count(_.metrics.get("left").flatMap(_.asBoolean).contains(true))
-      val ranked = weapons(matches)
       GameSummary(
         gameId = gameId,
         matches = matches.size,
@@ -140,8 +126,7 @@ object Aggregates:
               .setScale(3, BigDecimal.RoundingMode.HALF_UP)
               .toDouble
         ,
-        mostEffectiveWeapon = ranked.headOption,
-        weapons = ranked,
+        gameMetrics = AnalyzerRegistry.forGame(gameId).gameMetrics(matches),
         patterns = matches.flatMap(_.patterns).groupBy(_.patternId).view.mapValues(_.size).toMap
       )
     }

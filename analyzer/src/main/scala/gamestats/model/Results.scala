@@ -55,7 +55,7 @@ final case class MatchSummary(
 )
 
 /** A player's record in one game, over all stored matches. avgMetric is the game's tiebreak metric
-  * (consistency in racing, K/D in combat).
+  * (% of right answers in trivia, longest snake in snake, net gain in blackjack).
   */
 final case class PlayerGameStats(
     gameId: String,
@@ -81,9 +81,8 @@ final case class Leaderboard(
     entries: List[LeaderboardEntry]
 )
 
-final case class WeaponStat(weapon: String, kills: Int)
-
-/** GET /api/v1/games/{gameId}/summary: G4, A6, matches and average duration.
+/** GET /api/v1/games/{gameId}/summary: G4, matches, average duration and the game's own statistics
+  * over every match (T5 in trivia, S5 in snake).
   */
 final case class GameSummary(
     gameId: String,
@@ -93,7 +92,6 @@ final case class GameSummary(
     playerEntries: Int,
     playersLeft: Int,
     abandonmentRate: Double,
-    mostEffectiveWeapon: Option[WeaponStat],
-    weapons: List[WeaponStat],
+    gameMetrics: Map[String, Json],
     patterns: Map[String, Int]
 )

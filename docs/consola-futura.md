@@ -9,13 +9,13 @@ GameStats ya está armado para eso. El simulador de esta primera parte hace exac
 ```mermaid
 flowchart LR
   subgraph consola[Consola de juegos]
-    j1[juego de carreras]
-    j2[juego de combate]
+    j1[trivia]
+    j2[blackjack]
     j3[juego nuevo]
   end
   subgraph carpeta[Carpeta compartida: events/]
-    f1[racing-pro/rp-0101.jsonl]
-    f2[arena-clash/ac-0042.jsonl]
+    f1[trivia/tv-0101.jsonl]
+    f2[blackjack/bj-0042.jsonl]
     f3[juego-nuevo/jn-0001.jsonl]
   end
   j1 -- agrega líneas --> f1
@@ -45,7 +45,7 @@ La consola y GameStats no se conocen. Lo único que comparten es la carpeta `eve
 - `schemaVersion: "1.0"`. Si en la segunda parte hace falta cambiar el sobre, se publica la 2.0 y el ingestor acepta las dos mientras dure la transición.
 - `source` con `consoleId` y `sessionId`. Es opcional para la validación, pero permite saber qué consola y qué sesión produjo cada evento cuando haya varias.
 - `seq` empezando en 1 y sin huecos. GameStats ordena por `seq` y usa los huecos para saber si todavía faltan eventos antes de cerrar la partida.
-- `matchId` único entre todas las consolas. Una forma simple es anteponer el `consoleId`: `c01-rp-0101`. Solo admite letras, dígitos, `-` y `_`, porque se usa como nombre de archivo.
+- `matchId` único entre todas las consolas. Una forma simple es anteponer el `consoleId`: `c01-tv-0101`. Solo admite letras, dígitos, `-` y `_`, porque se usa como nombre de archivo.
 - La partida empieza con `MATCH_STARTED` y termina con `MATCH_FINISHED`. Sin `MATCH_FINISHED`, GameStats la cierra como parcial a los 120 s sin eventos.
 
 ### Lo que conviene saber
@@ -61,7 +61,7 @@ La consola y GameStats no se conocen. Lo único que comparten es la carpeta `eve
 1. Crear `configs/games/<gameId>.json` con los tipos de evento propios y sus claves obligatorias. Los eventos generales (inicio, fin, jugadores, puntaje, turnos y acciones) ya vienen incluidos.
 2. Reiniciar el ingestor.
 
-Con eso el juego ya se valida, se agrupa por partida y recibe las estadísticas generales G1 a G6: eventos por tipo, duración, desconexiones, abandono, puntaje y tiempo por turno. Es lo que pasa hoy con `chess-lite`, que no tiene una sola línea de código propia en Go ni en Scala. Un juego que todavía no tiene tipos propios puede reportar con `SCORE_CHANGED`, `TURN_STARTED`, `TURN_ENDED` y `PLAYER_ACTION`.
+Con eso el juego ya se valida, se agrupa por partida y recibe las estadísticas generales G1 a G6: eventos por tipo, duración, desconexiones, abandono, puntaje y tiempo por turno. Lo prueba `card-duel`, un juego inventado que solo existe en las pruebas: el ingestor lo carga desde un JSON en `testdata/` y el analyzer le calcula G1 a G6 con `GenericAnalyzer`, sin una sola línea de código propia en Go ni en Scala. Un juego que todavía no tiene tipos propios puede reportar con `SCORE_CHANGED`, `TURN_STARTED`, `TURN_ENDED` y `PLAYER_ACTION`.
 
 ### Si se quieren métricas propias: un analizador en Scala
 
