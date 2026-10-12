@@ -105,16 +105,16 @@ func Build(b *match.Builder, spec Spec) {
 }
 
 // Generate plays a random match with the first of the given players. A
-// fruit comes every 2 to 8 s depending on skill; before each one the snake
+// fruit comes every 2 to 8 s depending on ability; before each one the snake
 // may die, more likely the longer it is and the higher the level.
 func Generate(b *match.Builder, players []string) {
 	rng := b.Rng()
-	skill := 0.2 + rng.Float64()*0.8
+	ability := 0.2 + rng.Float64()*0.8
 	spec := Spec{Player: players[0], Grid: "20x20"}
 	t := 2 * time.Second
 	length, foods, lives := StartLength, 0, Lives
 	for lives > 0 {
-		gap := 2000 + (1-skill)*6000 + rng.NormFloat64()*700
+		gap := 2000 + (1-ability)*6000 + rng.NormFloat64()*700
 		gap = max(2000, min(gap, 8000))
 		level := 1 + foods/FoodsPerLevel
 		risk := 0.015 + 0.005*float64(length-StartLength) + 0.012*float64(level-1)

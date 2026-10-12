@@ -63,7 +63,14 @@ mkdir -p "$DATA"
 DATA="$(cd "$DATA" && pwd)"
 # En Git Bash, Docker Desktop necesita la ruta con letra de unidad (C:/...).
 if command -v cygpath >/dev/null 2>&1; then DATA="$(cygpath -m "$DATA")"; fi
-for sub in events/racing-pro events/arena-clash events/chess-lite results rejected outbox state; do
+# Una carpeta de eventos por juego registrado en configs/games (sin
+# _common.json): agregar un juego no obliga a tocar el instalador.
+for config in configs/games/*.json; do
+  game="$(basename "$config" .json)"
+  [ "$game" = "_common" ] && continue
+  mkdir -p "$DATA/events/$game"
+done
+for sub in results rejected outbox state; do
   mkdir -p "$DATA/$sub"
 done
 echo "Datos en: $DATA"

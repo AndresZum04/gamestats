@@ -25,7 +25,7 @@ var (
 	categories = []string{"CIENCIA", "HISTORIA", "DEPORTES", "GEOGRAFIA", "ENTRETENIMIENTO"}
 	points     = map[string]int{"EASY": 100, "MEDIUM": 150, "HARD": 200}
 	timeLimit  = map[string]int{"EASY": 10000, "MEDIUM": 15000, "HARD": 20000}
-	// ease scales a player's skill into a chance of answering right.
+	// ease scales a player's ability into a chance of answering right.
 	ease = map[string]float64{"EASY": 1.0, "MEDIUM": 0.8, "HARD": 0.6}
 )
 
@@ -142,7 +142,7 @@ func Build(b *match.Builder, spec Spec) {
 }
 
 // Generate plays a random match with 2 to 6 of the given players and 10
-// questions drawn from the bank. Each player has a skill that sets the
+// questions drawn from the bank. Each player has a ability that sets the
 // chance of a right answer and how fast it comes.
 func Generate(b *match.Builder, players []string) {
 	rng := b.Rng()
@@ -151,9 +151,9 @@ func Generate(b *match.Builder, players []string) {
 	for _, i := range rng.Perm(len(Bank))[:Questions] {
 		spec.Questions = append(spec.Questions, Bank[i])
 	}
-	skill := make([]float64, n)
-	for i := range skill {
-		skill[i] = 0.35 + rng.Float64()*0.6
+	ability := make([]float64, n)
+	for i := range ability {
+		ability[i] = 0.35 + rng.Float64()*0.6
 	}
 	for _, q := range spec.Questions {
 		limit := timeLimit[q.Difficulty]
@@ -162,10 +162,10 @@ func Generate(b *match.Builder, players []string) {
 			if rng.Float64() < 0.06 {
 				continue // timeout
 			}
-			ms := float64(limit)*(0.15+0.5*(1-skill[p])) + rng.NormFloat64()*1500
+			ms := float64(limit)*(0.15+0.5*(1-ability[p])) + rng.NormFloat64()*1500
 			ms = max(800, min(ms, float64(limit-200)))
 			option := q.Correct
-			if rng.Float64() >= skill[p]*ease[q.Difficulty] {
+			if rng.Float64() >= ability[p]*ease[q.Difficulty] {
 				option = wrongOption(q.Correct, rng.Intn(3))
 			}
 			row[p] = Answer{Option: option, ResponseMs: int(ms)}

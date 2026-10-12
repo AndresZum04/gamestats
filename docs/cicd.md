@@ -47,11 +47,11 @@ Corre después de los dos anteriores. Prueba el sistema completo como en producc
 1. Crea la carpeta de datos y le pasa a compose el uid del runner.
 2. `docker compose --profile demo build`: construye las tres imágenes desde el código fuente.
 3. `docker compose up -d --wait`: levanta analyzer e ingestor y espera a que estén sanos.
-4. Corre el simulador con semilla 42, que siempre genera las mismas 16 partidas.
+4. Corre el simulador con semilla 42, que siempre genera las mismas 18 partidas: 4 de trivia, 4 de snake, 4 de blackjack y las 6 de escenario.
 5. `scripts/smoke-test.sh` verifica cuatro cosas:
-   - que el analyzer tiene las 16 partidas;
+   - que el analyzer tiene las 18 partidas;
    - que aparecen los 6 patrones;
-   - que el tablero y los endpoints de consulta responden;
+   - que el tablero, el leaderboard y el resumen de trivia, snake y blackjack responden;
    - que el ingestor rechazó exactamente los eventos inválidos que reportó el simulador, con el outbox vacío.
 6. Junta los archivos en `ci-artifacts/`:
    - `logs/compose.log` con los logs de todos los contenedores;
@@ -67,7 +67,7 @@ Prueba el instalador como lo usaría el profesor: un clon recién hecho en una m
 
 1. `./install.sh --yes`.
 2. Copia `data/samples/demo-small.jsonl` a la carpeta de eventos y espera sus 12 partidas.
-3. Corre el simulador con semilla al azar y espera 28 partidas en total.
+3. Corre el simulador con semilla al azar y espera 30 partidas en total (12 + 18).
 4. `./uninstall.sh --yes --delete-data`, siempre.
 
 Corre solo en Ubuntu: los runners de Windows de GitHub no ejecutan contenedores Linux. `install.ps1` se probó a mano en Windows 11 con Docker Desktop.

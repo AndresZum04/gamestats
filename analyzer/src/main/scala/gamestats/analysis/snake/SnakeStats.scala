@@ -63,6 +63,10 @@ object SnakeStats:
   def fruitsPerLife(events: List[SnakeEvent]): Map[String, List[Int]] =
     byPlayer(events).view.mapValues(evs => lives(evs).map(_.size)).toMap
 
+  /** S4 average, composed from the steps above: events -> lives -> fruits per life -> average. */
+  val avgFruitsPerLife: List[SnakeEvent] => Option[Double] =
+    lives andThen (_.map(_.size.toDouble)) andThen Metrics.average
+
   /** One point of the length chart: time, length and whether the snake died there. */
   final case class LengthPoint(atMs: Long, length: Int, died: Boolean)
 

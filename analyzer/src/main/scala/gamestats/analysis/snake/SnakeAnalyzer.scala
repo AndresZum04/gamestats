@@ -32,12 +32,10 @@ object SnakeAnalyzer extends ComposedAnalyzer[SnakeEvent]:
         )
       )
       .toMap
-    val s4: PlayerMetrics = fruitsPerLife(events).view
-      .mapValues(perLife =>
-        Map("fruitsPerLife" -> Json.arr(perLife.map(n => int(n.toLong))*)) ++
-          Metrics.average(perLife.map(_.toDouble)).map(a => "avgFruitsPerLife" -> num(a))
-      )
-      .toMap
+    val s4: PlayerMetrics = events.groupBy(_.playerId).map { (p, evs) =>
+      p -> (Map("fruitsPerLife" -> Json.arr(lives(evs).map(l => int(l.size.toLong))*)) ++
+        avgFruitsPerLife(evs).map(a => "avgFruitsPerLife" -> num(a)))
+    }
     val chart: PlayerMetrics = lengthSeries(events).view
       .mapValues(points =>
         Map(

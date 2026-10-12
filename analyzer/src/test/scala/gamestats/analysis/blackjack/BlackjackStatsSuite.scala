@@ -106,6 +106,19 @@ class BlackjackStatsSuite extends munit.FunSuite:
     assertEquals(dbl(mari("winPct")), 33.3)
   }
 
+  test("B1: a player who never wins is still there, with 0 %") {
+    val losses = batch(
+      "blackjack",
+      List(
+        hand(1, "p-luis", 1, "LOSE", -100, 900),
+        hand(2, "p-luis", 2, "PUSH", 0, 900),
+        hand(3, "p-ana", 1, "WIN", 100, 1100)
+      )
+    )
+    val luis = BlackjackAnalyzer.analyze(losses).players.find(_.playerId == "p-luis").get.metrics
+    assertEquals((dbl(luis("hands")), dbl(luis("wins")), dbl(luis("winPct"))), (2.0, 0.0, 0.0))
+  }
+
   test("B2: net gain against the starting chips of MATCH_STARTED, best and worst hand") {
     val gabo = metrics("p-gabo")
     assertEquals(dbl(gabo("netGain")), 525.0) // 1025 - 500

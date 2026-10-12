@@ -7,7 +7,7 @@
 # Variables:
 #   ANALYZER_URL         (http://localhost:8081)
 #   INGESTOR_URL         (http://localhost:8080)
-#   EXPECTED_MATCHES     partidas mínimas esperadas (16: 4+4+2 y 6 escenarios)
+#   EXPECTED_MATCHES     partidas mínimas esperadas (18: 4 de cada juego y 6 escenarios)
 #   EXPECTED_REJECTIONS  si se define, rechazos exactos esperados
 #   TIMEOUT_SECONDS      espera máxima a que lleguen las partidas (180)
 # Solo usa bash y curl, para correr igual en Linux, macOS y Git Bash.
@@ -15,7 +15,7 @@ set -euo pipefail
 
 ANALYZER_URL="${ANALYZER_URL:-http://localhost:8081}"
 INGESTOR_URL="${INGESTOR_URL:-http://localhost:8080}"
-EXPECTED_MATCHES="${EXPECTED_MATCHES:-16}"
+EXPECTED_MATCHES="${EXPECTED_MATCHES:-18}"
 TIMEOUT_SECONDS="${TIMEOUT_SECONDS:-180}"
 
 fail() { echo "FALLA: $*" >&2; exit 1; }
@@ -47,10 +47,14 @@ for p in P1 P2 P3 P4 P5 P6; do
 done
 echo "OK  patrones: $patterns"
 
-for path in /dashboard /api/v1/games/racing-pro/leaderboard /api/v1/games/arena-clash/summary; do
+paths="/dashboard"
+for game in trivia snake blackjack; do
+  paths="$paths /api/v1/games/$game/leaderboard /api/v1/games/$game/summary"
+done
+for path in $paths; do
   curl -fsS -o /dev/null "$ANALYZER_URL$path" || fail "$path no responde"
 done
-echo "OK  tablero y endpoints de consulta"
+echo "OK  tablero, leaderboard y resumen de trivia, snake y blackjack"
 
 stats=$(curl -fsS "$INGESTOR_URL/api/v1/stats")
 rejected=$(printf '%s' "$stats" | grep -o '"rejected":[0-9]*' | grep -o '[0-9]*$')

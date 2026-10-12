@@ -54,8 +54,8 @@ flowchart TB
   httpin[handler HTTP] --> intake
   intake[Intake<br/>validar + Dedup] -- rechazos --> rej[RejectedWriter<br/>una goroutine dueña del archivo]
   intake -- "chan Event (10 000)" --> disp[Dispatcher<br/>dueño del mapa matchId → canal]
-  disp -- "chan Event (256)" --> w1[worker rp-0001]
-  disp --> w2[worker ac-0003]
+  disp -- "chan Event (256)" --> w1[worker tv-0001]
+  disp --> w2[worker bj-0003]
   disp --> w3[worker ...]
   w1 -- done --> disp
   w1 -- "chan MatchBatch" --> senders

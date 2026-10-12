@@ -77,24 +77,31 @@ def eventsByType(events: List[Event]): Map[String, Int] =
   events.groupBy(_.eventType).view.mapValues(_.size).toMap
 ```
 
-Otro es R1. La suma y la suma de cuadrados salen de un solo `foldLeft`, sin acumuladores mutables:
+Otro es T1. Aciertos, errores y timeouts salen de un solo `foldLeft` hacia un `Answers` inmutable: cada paso devuelve un mapa nuevo, sin acumuladores mutables (`analysis/trivia/TriviaStats.scala`):
 
 ```scala
-val lapStats: List[Long] => Option[LapStats] = times =>
-  Option.when(times.nonEmpty) {
-    val (sum, sumSq) = times.foldLeft((0.0, 0.0)) { case ((s, sq), t) => (s + t, sq + t.toDouble * t) }
-    val avg = sum / times.size
-    LapStats(times.min, avg, math.sqrt(math.max(sumSq / times.size - avg * avg, 0.0)))
+def answers(events: List[TriviaEvent]): Map[String, Answers] =
+  events.foldLeft(Map.empty[String, Answers]) {
+    case (acc, a: AnswerSubmitted) =>
+      val r = acc.getOrElse(a.playerId, Answers.empty)
+      acc.updated(a.playerId, if a.correct then r.copy(correct = r.correct + 1) else r.copy(wrong = r.wrong + 1))
+    case (acc, t: AnswerTimeout) =>
+      val r = acc.getOrElse(t.playerId, Answers.empty)
+      acc.updated(t.playerId, r.copy(timeouts = r.timeouts + 1))
+    case (acc, _) => acc
   }
 ```
 
 ### Composición
 
-R2 se define a partir de R1 con `andThen`:
+El promedio de S4 (frutas por vida) se define encadenando funciones con `andThen`: los eventos se parten en vidas, cada vida se convierte en su cantidad de frutas y se promedia (`analysis/snake/SnakeStats.scala`):
 
 ```scala
-val consistencyOf: List[Long] => Option[Double] = lapStats andThen (_.map(consistency))
+val avgFruitsPerLife: List[SnakeEvent] => Option[Double] =
+  lives andThen (_.map(_.size.toDouble)) andThen Metrics.average
 ```
+
+`lives` es la misma función que usan S2 y el patrón P3, así que las tres comparten la definición de "vida".
 
 Y cada analizador es una composición de tres pasos (`analysis/GameAnalyzer.scala`):
 
@@ -110,13 +117,15 @@ Un juego nuevo solo aporta las piezas que cambian: cómo leer sus eventos, sus m
 Los eventos tipados son `enum` de Scala 3 y la conversión devuelve `Option`. Un evento al que le falta un dato no se construye, y se descarta con `flatMap`:
 
 ```scala
-case "LAP_COMPLETED" =>
-  for
-    lap <- field[Int](d, "lap")
-    time <- field[Long](d, "lapTimeMs")
-    position <- field[Int](d, "position")
-    speed <- field[Double](d, "topSpeedKmh")
-  yield LapCompleted(m, p, lap, time, position, speed)
+case "HAND_RESULT" =>
+  player(p =>
+    for
+      round <- field[Int](d, "round")
+      result <- field[String](d, "result")
+      payout <- field[Long](d, "payout")
+      chips <- field[Long](d, "chips")
+    yield HandResult(m, p, round, result, payout, chips)
+  )
 ```
 
 Es el equivalente funcional del `if err != nil` de Go: si cualquier paso da `None`, todo da `None`.
@@ -129,57 +138,53 @@ Los únicos efectos del analyzer están en `http/` (red, reloj, logs) y en `stor
 
 Como el análisis es puro, las pruebas son "esta entrada da esta salida". No hay mocks, ni base de datos, ni servidor, ni reloj. `DeterminismSuite` verifica que analizar dos veces la misma partida da exactamente el mismo resultado.
 
-## La misma métrica en los dos estilos: K/D
+## La misma métrica en los dos estilos: % de victoria en blackjack
 
-En GameStats el K/D lo calcula Scala. La versión de Go es ilustrativa: muestra cómo se vería en estilo imperativo.
+En GameStats el % de victoria (B1) lo calcula Scala. La versión de Go es ilustrativa: muestra cómo se vería en estilo imperativo.
 
 Go, imperativo (no está en el repositorio):
 
 ```go
-func killDeath(events []model.Event) map[string]float64 {
-	kills := map[string]int{}
-	deaths := map[string]int{}
+func winPct(events []model.Event) map[string]float64 {
+	wins := map[string]int{}
+	hands := map[string]int{}
 	for _, e := range events {
-		if e.Type != "PLAYER_ELIMINATED" {
+		if e.Type != "HAND_RESULT" {
 			continue
 		}
-		kills[*e.PlayerID]++
-		deaths[e.Data["victimId"].(string)]++
-	}
-	kd := map[string]float64{}
-	for p, k := range kills {
-		d := deaths[p]
-		if d == 0 {
-			d = 1
+		hands[*e.PlayerID]++
+		if e.Data["result"].(string) == "WIN" {
+			wins[*e.PlayerID]++
 		}
-		kd[p] = float64(k) / float64(d)
 	}
-	return kd
+	pct := map[string]float64{}
+	for p, w := range wins {
+		pct[p] = 100 * float64(w) / float64(hands[p])
+	}
+	return pct
 }
 ```
 
-Scala, funcional (`analysis/arena/ArenaStats.scala`):
+Scala, funcional (`analysis/blackjack/BlackjackStats.scala`):
 
 ```scala
-final case class Combat(kills: Int, deaths: Int, assists: Int):
-  def kd: Double = kills.toDouble / math.max(deaths, 1)
+final case class Record(hands: Int, wins: Int):
+  def winPct: Double = if hands == 0 then 0.0 else 100.0 * wins / hands
 
-def combat(events: List[ArenaEvent], players: List[String]): Map[String, Combat] =
-  val kills = eliminations(events)
-  val byKiller = countBy(kills)(_.playerId)
-  val byVictim = countBy(kills)(_.victimId)
-  val byAssist = countBy(kills.flatMap(_.assistIds))(identity)
-  (players.toSet ++ byKiller.keySet ++ byVictim.keySet ++ byAssist.keySet).toList
-    .map(p => p -> Combat(byKiller.getOrElse(p, 0), byVictim.getOrElse(p, 0), byAssist.getOrElse(p, 0)))
+def record(events: List[BlackjackEvent]): Map[String, Record] =
+  hands(events)
+    .groupBy(_.playerId)
+    .view
+    .mapValues(hs => Record(hs.size, hs.count(_.result == "WIN")))
     .toMap
 ```
 
 Lo que se nota al compararlas:
 
-- En Go, los mapas `kills` y `deaths` se van llenando dentro del ciclo, y el resultado depende del orden en que pasa todo. En Scala cada agrupación es un valor que se calcula una vez y no cambia.
-- La versión de Go tiene un error típico del estilo imperativo: un jugador que murió pero nunca eliminó a nadie no aparece en `kd`, porque el segundo ciclo solo recorre `kills`. En Scala, el conjunto de jugadores se arma explícitamente como unión de todas las fuentes, y una prueba (`ArenaStatsSuite`) verifica que el K/D sin muertes no lanza excepción y que todos los jugadores aparecen.
-- `e.Data["victimId"].(string)` en Go entra en pánico si el dato no es un string. En Scala ese caso ya se descartó al convertir a `PlayerEliminated`, así que `combat` trabaja con datos que el compilador garantiza.
-- La versión de Go es más fácil de seguir paso a paso con un depurador. La de Scala se lee como una definición: "las muertes son la cantidad de eliminaciones agrupadas por víctima".
+- En Go, los mapas `wins` y `hands` se van llenando dentro del ciclo, y hay que seguir el ciclo entero para saber qué contienen. En Scala cada jugador se convierte de una vez en un `Record` que no cambia.
+- La versión de Go tiene un error típico del estilo imperativo: un jugador que jugó manos pero nunca ganó no aparece en el resultado, porque el segundo ciclo solo recorre `wins`. En Scala el `Record` se arma a partir de las manos de cada jugador, así que el que nunca ganó aparece con 0 %; una prueba de `BlackjackStatsSuite` lo verifica con un jugador que solo pierde y empata.
+- `e.Data["result"].(string)` en Go entra en pánico si el dato no es un string. En Scala ese caso ya se descartó al convertir a `HandResult`, así que `record` trabaja con datos que el compilador garantiza.
+- La versión de Go es más fácil de seguir paso a paso con un depurador. La de Scala se lee como una definición: "el récord de un jugador son sus manos y cuántas de ellas son `WIN`".
 
 ## Ventajas y limitaciones que observamos
 
@@ -198,13 +203,13 @@ Lo que se nota al compararlas:
 ### Scala
 
 #### Ventajas
-- Las pruebas son simples y confiables. Cada estadística se probó con una partida de 3 pilotos o 4 jugadores escrita a mano, y el valor esperado se calculó en un comentario. Al calcularlos encontramos dos errores de diseño del simulador: las penalizaciones contadas dos veces y un empate de consistencia.
+- Las pruebas son simples y confiables. Cada estadística se probó con una partida de 1 o 2 jugadores escrita a mano, y el valor esperado se calculó en un comentario. Hacer las cuentas a mano también sirvió para el simulador: al escribir la tabla de aciertos del escenario `tv-scn-streak` encontramos que el comentario decía mal en qué preguntas un jugador iba solo en el último lugar.
 - La composición permitió agregar juegos sin tocar lo existente. La prueba de `CardDuelAnalyzer` agrega un juego en 6 líneas.
 - `Option` y los `enum` eliminan toda una clase de errores: ninguna estadística hace `.get` ni compara con `null`.
 
 #### Limitaciones
-- Algunas reglas se leen peor como `foldLeft`. P3 (racha de eliminaciones) es una máquina de estados, y escrita como `foldLeft` sobre un `StreakState` inmutable es más difícil de seguir que un ciclo con dos variables.
-- Hay que cuidar el orden. Un `Map` no garantiza orden, así que en varios lugares hay `sortBy` explícitos para que la salida sea determinista: jugadores por puesto, patrones por tiempo, MVP con desempate por id.
+- Algunas reglas se leen peor como `foldLeft`. Partir una lista en rachas (P1 y P5, en `Patterns.runs`) es una máquina de estados, y escrita como `foldLeft` sobre una tupla de racha actual y rachas cerradas es más difícil de seguir que un ciclo con dos variables.
+- Hay que cuidar el orden. Un `Map` no garantiza orden, así que en varios lugares hay `sortBy` explícitos para que la salida sea determinista: jugadores por puesto, patrones por tiempo, récord de largo con desempate por partida.
 - La compilación es lenta: el analyzer tarda varios minutos en compilarse desde cero, contra segundos en Go. Por eso el Dockerfile separa la descarga de dependencias en su propia capa.
 - La imagen pesa 234 MB, contra 14 MB de Go, por la JVM.
 

@@ -50,7 +50,7 @@ Al terminar, el instalador muestra las direcciones:
 
 1. Verifica que Docker y Docker Compose v2 estén instalados y respondiendo. Si no, explica cómo instalarlos y se detiene.
 2. Verifica que los puertos 8080 y 8081 estén libres. Si los ocupa una instalación anterior de GameStats, sigue y la actualiza; si los ocupa otro programa, se detiene y dice cuál.
-3. Crea la carpeta de datos con `events/racing-pro`, `events/arena-clash`, `events/chess-lite`, `results`, `rejected`, `outbox` y `state`.
+3. Crea la carpeta de datos con una carpeta `events/<gameId>` por cada juego de `configs/games/` (hoy `events/trivia`, `events/snake` y `events/blackjack`), más `results`, `rejected`, `outbox` y `state`. Agregar un juego no obliga a tocar el instalador.
 4. Escribe el archivo `.env` con la ruta de esa carpeta. En Linux y macOS también guarda el uid del usuario, para que los contenedores puedan escribir en la carpeta.
 5. Corre `docker compose build`, que compila Go y Scala desde el código fuente.
 6. Corre `docker compose up -d` y espera hasta 5 minutos a que los dos servicios estén sanos.
