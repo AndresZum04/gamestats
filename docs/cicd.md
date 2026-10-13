@@ -135,7 +135,7 @@ la siguiente imagen muestra un trozo de codigo del mismo TriviaStatsSuite, la li
 
 ![comprobacion del tiempo esperado con el tiempo obtenido](img/respuesta_correcta_TriviaStat.png).
 
-se realizo una modificacion a esa misma linea, cambiando el tiempo esperado de 2000ms a 2001ms, pero la respuestas lanzadas por el simulador se siguen lanzando tal cual, por lo que el tiempo esperado ya no coincidira con el tiempo recibido. La siguiente imagen muestra el cambio.
+se realizo una modificacion a esa misma linea, cambiando el tiempo esperado de 2000ms a 2001ms, pero las respuestas lanzadas por el simulador se siguen lanzando tal cual, por lo que el tiempo esperado ya no coincidira con el tiempo recibido. La siguiente imagen muestra el cambio.
 
 ![comprobacion rota del tiempo esperado con el tiempo obtenido](img/respuesta_rota_TriviaStat.png).
 
