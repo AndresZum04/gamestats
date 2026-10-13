@@ -137,7 +137,7 @@ la siguiente imagen muestra un trozo de codigo del mismo TriviaStatsSuite, la li
 
 se realizo una modificacion a esa misma linea, cambiando el tiempo esperado de 2000ms a 2001ms, pero la respuestas lanzadas por el simulador se siguen lanzando tal cual, por lo que el tiempo esperado ya no coincidira con el tiempo recibido. La siguiente imagen muestra el cambio.
 
-![comprobacion del tiempo esperado con el tiempo obtenido](img/respuesta_rota_analizador.png).
+![comprobacion rota del tiempo esperado con el tiempo obtenido](img/respuesta_rota_TriviaStat.png).
 
 ahora, cuando se subieron estos cambios a la rama "ci-falla-a-proposito", y se revisaron los actions, se comprobo que el CI acepto el ingestor y simulador pero no acepto el analizer porque el job "Scala (analizer)" fallo debido a lo mencionado anteriormente; se esperaba que el mejor tiempo de respuesta de luis fuese 2001ms pero se recibio 2000ms, por lo que por esta discrepancia se determino que la prueba estaba rota y se rechazo, como se ve en la siguiente imagen.
 
