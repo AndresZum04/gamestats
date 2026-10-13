@@ -121,3 +121,35 @@ En Windows, `go test -race` necesita gcc. Sin gcc se puede correr dentro de Dock
 ```bash
 docker run --rm -v "$PWD:/repo" -w /repo/ingestor golang:1.22 go test -race ./...
 ```
+
+## Verificacion del CI con prueba rota
+
+Se manipulo una prueba para comprobar que el CI protege el codigo correctamente y rechaza un push con una prueba rota. Esta prueba rota se subio en una rama llamada "ci-falla-a-proposito".
+
+en la siguiente imagen se muestra, en la linea 74 del codigo "TriviaStatsSuite" en scala, que el mejor tiempo de respuesta recibido de luis es de 2000ms.
+
+![respuestas de la simulacion de un juego corriendo](img/respuestas_del_simulador.png).
+
+
+la siguiente imagen muestra un trozo de codigo del mismo TriviaStatsSuite, la linea 116 basicamente comprueba que el tiempo lanzado por la simulacion coincide con el tiempo esperado para luis.
+
+![comprobacion del tiempo esperado con el tiempo obtenido](img/respuesta_correcta_TriviaStat.png).
+
+se realizo una modificacion a esa misma linea, cambiando el tiempo esperado de 2000ms a 2001ms, pero la respuestas lanzadas por el simulador se siguen lanzando tal cual, por lo que el tiempo esperado ya no coincidira con el tiempo recibido. La siguiente imagen muestra el cambio.
+
+![comprobacion del tiempo esperado con el tiempo obtenido](img/respuesta_rota_analizador.png).
+
+ahora, cuando se subieron estos cambios a la rama "ci-falla-a-proposito", y se revisaron los actions, se comprobo que el CI acepto el ingestor y simulador pero no acepto el analizer porque el job "Scala (analizer)" fallo debido a lo mencionado anteriormente; se esperaba que el mejor tiempo de respuesta de luis fuese 2001ms pero se recibio 2000ms, por lo que por esta discrepancia se determino que la prueba estaba rota y se rechazo, como se ve en la siguiente imagen.
+
+![comprobacion del tiempo esperado con el tiempo obtenido](img/falla_del_CI_con_prueba_rota.png).
+
+
+
+
+
+
+
+
+
+
+
