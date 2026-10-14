@@ -123,3 +123,12 @@ func TestRoutingAndHealth(t *testing.T) {
 		t.Errorf("GET events: status %d, want 405", rec.Code)
 	}
 }
+
+//dashboard test
+func TestStatsAllowsTheDashboard(t *testing.T) {
+	_, h := newServer(t)
+	rec := do(t, h, http.MethodGet, "/api/v1/stats", "")
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("Access-Control-Allow-Origin = %q, want *", got)
+	}
+}
