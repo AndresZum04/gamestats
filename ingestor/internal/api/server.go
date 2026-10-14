@@ -52,6 +52,10 @@ func logRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		// The dashboard is served by the analyzer (another port), so the
+		// browser needs this header to read the ingestor API.
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+
 		next.ServeHTTP(rec, r)
 		if r.URL.Path == "/health" {
 			return
