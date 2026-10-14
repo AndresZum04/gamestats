@@ -194,6 +194,7 @@ Lo que se nota al compararlas:
 - La concurrencia queda a la vista. Un `select` con tres casos dice exactamente qué puede pasar, y el detector de carreras (`-race`) atrapa errores que en revisión no se ven.
 - Para E/S es directo: leer un archivo desde un offset, guardar con un archivo temporal y renombrar, responder 503. Cada paso es una instrucción.
 - El binario pesa 14 MB, arranca al instante y no necesita runtime.
+- El uso de variables es muy comodo para manejar los detalles de los eventos de los juegos que despues interpreta el analizador
 
 #### Limitaciones
 - El cierre de un worker exigió razonar sobre todos los órdenes posibles. El diseño obvio tiene un deadlock: el worker espera que el dispatcher le reciba el aviso de cierre mientras el dispatcher espera poder enviarle un evento, y los dos quedan bloqueados. Lo evitamos haciendo que el worker siga leyendo su canal mientras avisa, y una prueba de estrés (`TestClosingMatchesUnderLoad`) cierra 50 partidas mientras siguen llegando eventos. En Scala este tipo de problema no existe, porque no hay estado compartido.
@@ -206,6 +207,7 @@ Lo que se nota al compararlas:
 - Las pruebas son simples y confiables. Cada estadística se probó con una partida de 1 o 2 jugadores escrita a mano, y el valor esperado se calculó en un comentario. Hacer las cuentas a mano también sirvió para el simulador: al escribir la tabla de aciertos del escenario `tv-scn-streak` encontramos que el comentario decía mal en qué preguntas un jugador iba solo en el último lugar.
 - La composición permitió agregar juegos sin tocar lo existente. La prueba de `CardDuelAnalyzer` agrega un juego en 6 líneas.
 - `Option` y los `enum` eliminan toda una clase de errores: ninguna estadística hace `.get` ni compara con `null`.
+- es muy util como lenguaje del analizador porque su paradigma siempre devuelve un resultado
 
 #### Limitaciones
 - Algunas reglas se leen peor como `foldLeft`. Partir una lista en rachas (P1 y P5, en `Patterns.runs`) es una máquina de estados, y escrita como `foldLeft` sobre una tupla de racha actual y rachas cerradas es más difícil de seguir que un ciclo con dos variables.
