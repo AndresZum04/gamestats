@@ -124,7 +124,6 @@ func TestRoutingAndHealth(t *testing.T) {
 	}
 }
 
-//dashboard test
 func TestStatsAllowsTheDashboard(t *testing.T) {
 	_, h := newServer(t)
 	rec := do(t, h, http.MethodGet, "/api/v1/stats", "")
