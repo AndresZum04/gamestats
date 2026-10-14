@@ -93,6 +93,11 @@
 
   <div class="stack">
     <section class="panel">
+      <h2>Ingestor en vivo</h2>
+      <div class="kpis" id="ingestor"></div>
+    </section>
+
+    <section class="panel">
       <h2>Resumen del juego</h2>
       <div class="kpis" id="summary"></div>
     </section>
@@ -464,6 +469,19 @@ async function selectMatch(matchId) {
   }
 }
 
+//function that asks for ingestor statistics in 8080 port
+async function refreshIngestor() {
+  try {
+    const res = await fetch(`http://${location.hostname}:8080/api/v1/stats`, { cache: "no-store" });
+    const s = await res.json();
+    $("ingestor").replaceChildren(
+      kpi("Recibidos", s.received), kpi("Rechazados", s.rejected),
+      kpi("Partidas activas", s.activeMatches), kpi("Goroutines", s.goroutines));
+  } catch {
+    $("ingestor").replaceChildren(el("div", { class: "empty" }, "Ingestor no disponible"));
+  }
+}
+
 async function refresh() {
   const game = encodeURIComponent(state.game);
   try {
@@ -476,6 +494,7 @@ async function refresh() {
     renderMatches(matches || []);
     renderSummary(summary);
     renderLeaderboard(board);
+    refreshIngestor();. 
     renderPatterns(patterns || []);
     state.firstLoad = false;
     $("status").className = "status";
