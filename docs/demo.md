@@ -157,7 +157,7 @@ Abrir `http://IP_DE_LA_VM:8081/dashboard`.
 
 Qué decir:
 - Cada push a `main` que pasa la CI publica las imágenes en GHCR y actualiza la VM por SSH.
-- La versión `v1.0.0` es la entregada; volver atrás es `./deploy.sh <sha>`.
+- La versión `v2.0.0` es la entregada, con trivia, snake y blackjack; `v1.0.0` es la anterior, con los juegos de antes. Volver atrás es `./deploy.sh <sha>`.
 
 ## Checklist contra el enunciado
 
