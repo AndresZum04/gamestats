@@ -126,4 +126,11 @@ Los puertos 8080 y 8081 quedan abiertos a internet y sin autenticación. Para un
 
 ## Estado
 
-El despliegue se probó localmente: `deploy.sh` con imágenes etiquetadas como en GHCR, la vuelta atrás a otra etiqueta, los límites de memoria y el simulador enviando por HTTP. Falta crear la VM y cargar los secretos. Cuando esté funcionando, aquí va la dirección pública del tablero.
+El sistema está desplegado en una VM de Azure y se actualiza solo con cada cambio en `main`:
+
+- Tablero: http://130.131.106.122:8081/dashboard
+- API del ingestor: http://130.131.106.122:8080/api/v1/stats
+
+Verificado el 2026-10-14 desde afuera de la VM: `/health` responde en los dos puertos; el tablero muestra trivia, snake y blackjack con 108 partidas (36 de cada juego), los seis patrones P1 a P6 y el panel "Ingestor en vivo"; y la versión desplegada es la del último commit de `main`.
+
+Antes de crear la VM, el despliegue se probó localmente: `deploy.sh` con imágenes etiquetadas como en GHCR, la vuelta atrás a otra etiqueta, los límites de memoria y el simulador enviando por HTTP.

@@ -115,7 +115,7 @@ La CI corre todo esto en cada push, más una prueba del instalador en una máqui
 
 Cada cambio en `main` publica las imágenes en GitHub Container Registry y actualiza una VM de Azure. Ver [docs/deployment.md](docs/deployment.md).
 
-Tablero desplegado: *pendiente de crear la VM.*
+Tablero desplegado: http://130.131.106.122:8081/dashboard (VM de Azure; se actualiza con cada cambio en `main`).
 
 ## Documentación
 
