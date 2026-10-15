@@ -117,6 +117,9 @@ Cada cambio en `main` publica las imágenes en GitHub Container Registry y actua
 
 Tablero desplegado: http://130.131.106.122:8081/dashboard (VM de Azure; se actualiza con cada cambio en `main`).
 
+Captura del tablero desplegado en la VM:
+![deployment en azure](docs/img/deploy_en_azure_captura.png)
+
 ## Documentación
 
 | Documento | Contenido |
