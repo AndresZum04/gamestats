@@ -6,7 +6,10 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
     "declaration": false,
-    "types": ["vite/client"]
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@gameconsole/shared": ["../shared/src/index.ts"]
+    }
   },
   "include": ["src", "tests", "vite.config.ts"]
 }
