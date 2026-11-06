@@ -41,7 +41,7 @@ Go no calcula ninguna métrica de juego y Scala no valida el formato básico de 
 2. El ingestor lo descubre. El `DirWatcher` es una goroutine que recorre la carpeta cada segundo. Por cada archivo nuevo o que creció lanza un `FileTailer`, otra goroutine que lee solo las líneas completas desde el último offset. Los offsets se guardan en `data/state/offsets.json`, así un reinicio no vuelve a leer lo ya procesado.
 3. Se valida. `Intake` aplica las reglas en el orden de la tabla de códigos: JSON válido, campos del sobre, juego y versión registrados, tipo permitido, jugador, claves de `data`. Después `Dedup` descarta los `eventId` repetidos. Los rechazados van a `data/rejected/rejected.jsonl` con su código. Los eventos que llegan por `POST /api/v1/events` pasan exactamente por el mismo `Intake`.
 4. Se agrupa por partida. El evento válido entra a un canal con buffer de 10 000. El dispatcher lo reenvía al worker de su `matchId` y, si la partida es nueva, crea ese worker.
-5. El worker arma la partida. Cada worker es dueño del estado de su partida: jugadores activos, desconectados o retirados, eventos y estado. Cuando llega `MATCH_FINISHED` y ya tiene todos los `seq` del 1 al del fin, ordena los eventos por `seq` y emite un `MatchBatch` `COMPLETE`. Si pasan 120 s sin eventos, emite uno `PARTIAL`.
+5. El worker arma la partida. Cada worker es dueño del estado de su partida: jugadores activos, desconectados o retirados, eventos y estado. Cuando llega `MATCH_FINISHED` y ya tiene todos los `seq` del 1 al del fin, ordena los eventos por `seq` y emite un `MatchBatch` `COMPLETE`. Si pasan 120 s sin eventos, emite uno `PARTIAL`. Con `LIVE_SNAPSHOT_INTERVAL` mayor que 0, además manda cada ese tiempo una copia `LIVE` de la partida abierta si llegaron eventos nuevos; esa copia se intenta una sola vez y la partida sigue abierta. El analyzer la guarda con `live: true` y la reemplaza con el lote final.
 6. Se envía a Scala. Un pool de 4 senders hace `POST /api/v1/matches`. Ante errores de red, 5xx o 429 reintenta tres veces (500 ms, 1 s, 2 s). Si siguen fallando, guarda el lote en `data/outbox/`, que se reintenta cada 30 s.
 7. Scala analiza. `Routes` decodifica el lote y elige el analizador del juego (o el genérico). El análisis es una función pura: `buildContext andThen computeStats andThen attachPatterns`. `ResultStore` lo guarda en un `Ref` y en `data/results/<matchId>.json`.
 8. Se consulta. La API REST y el tablero leen el `Ref`. Los agregados entre partidas (leaderboard, resumen por juego) también son funciones puras sobre la lista de resultados.
@@ -108,7 +108,7 @@ La entrada de eventos, en cambio, sí es por archivos: así lo describió el pro
 
 | Servicio | Puerto | Variables principales |
 | --- | --- | --- |
-| ingestor | 8080 | `ANALYZER_URL`, `DATA_DIR`, `CONFIG_DIR`, `WATCH_INTERVAL` (1s), `MATCH_IDLE_TIMEOUT` (120s), `MATCH_FINISH_GRACE` (5s), `SENDER_WORKERS` (4), `INPUT_BUFFER` (10000) |
+| ingestor | 8080 | `ANALYZER_URL`, `DATA_DIR`, `CONFIG_DIR`, `WATCH_INTERVAL` (1s), `MATCH_IDLE_TIMEOUT` (120s), `MATCH_FINISH_GRACE` (5s), `SENDER_WORKERS` (4), `INPUT_BUFFER` (10000), `LIVE_SNAPSHOT_INTERVAL` (0, apagado) |
 | analyzer | 8081 | `PORT`, `RESULTS_DIR` |
 
 | Carpeta (`GAMESTATS_DATA`) | Quién escribe | Contenido |

@@ -88,11 +88,13 @@ Las banderas `--trivia`, `--snake` y `--blackjack` fijan cuántas partidas de ca
 | ingestor | `POST /api/v1/events` | recibe un evento o un arreglo de hasta 1000 |
 | ingestor | `GET /api/v1/matches`, `/matches/{id}` | partidas en memoria y su estado |
 | ingestor | `GET /api/v1/rejected?limit=50` | últimos eventos rechazados con su motivo |
-| ingestor | `GET /api/v1/stats` | recibidos, aceptados, rechazados por código, partidas activas, lotes enviados, goroutines |
-| analyzer | `GET /api/v1/matches?gameId=&limit=` | partidas analizadas, las más recientes primero |
+| ingestor | `GET /api/v1/stats` | recibidos, aceptados, rechazados por código, partidas activas, lotes enviados (y `LIVE` aparte), goroutines |
+| ingestor | `GET /api/v1/games` | por juego: partidas abiertas, terminadas y parciales, eventos y último evento |
+| analyzer | `GET /api/v1/matches?gameId=&limit=&live=` | partidas analizadas, las más recientes primero; con `live=true`, las que se están jugando |
+| analyzer | `GET /api/v1/summary` | resumen de todos los juegos: partidas, jugadores, duración, patrones y eventos por tipo |
 | analyzer | `GET /api/v1/matches/{id}` | análisis completo de una partida |
 | analyzer | `GET /api/v1/players/{id}` | registro de un jugador en cada juego |
-| analyzer | `GET /api/v1/games/{id}/summary` | resumen del juego: abandono, duración promedio y `gameMetrics` (categoría más difícil, récord de largo) |
+| analyzer | `GET /api/v1/games/{id}/summary` | resumen del juego: abandono, duración promedio y `gameMetrics` (categoría más difícil, récord de largo, humanos frente a CPU) |
 | analyzer | `GET /api/v1/games/{id}/leaderboard` | ranking del juego |
 | analyzer | `GET /api/v1/patterns?gameId=&patternId=` | patrones detectados |
 | analyzer | `GET /dashboard` | tablero web |
