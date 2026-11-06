@@ -18,7 +18,8 @@ class AggregatesSuite extends munit.FunSuite:
       partial: Boolean = false,
       matchMetrics: Map[String, Json] = Map.empty,
       patterns: List[String] = Nil,
-      durationMs: Long = 1000
+      durationMs: Long = 1000,
+      live: Boolean = false
   ): MatchAnalysis =
     MatchAnalysis(
       id,
@@ -29,7 +30,8 @@ class AggregatesSuite extends munit.FunSuite:
       Map("X" -> 1),
       matchMetrics,
       players,
-      patterns.map(pid => PatternMatch(pid, pid, game, id, None, None, 0, "", Nil))
+      patterns.map(pid => PatternMatch(pid, pid, game, id, None, None, 0, "", Nil)),
+      live
     )
 
   def pct(v: Double): (String, Json) = "correctPct" -> Json.fromDoubleOrNull(v)
@@ -235,4 +237,65 @@ class AggregatesSuite extends munit.FunSuite:
       List("tv-2", "tv-1")
     )
     assertEquals(Aggregates.patterns(all, None, None, 1).size, 1)
+  }
+
+  /** A trivia match still being played, with a player and a pattern of its own. */
+  val live: MatchAnalysis = analysis(
+    "tv-live",
+    "trivia",
+    400,
+    List(stats("p-ana", None, pct(100)), stats("p-nuevo", None, pct(100))),
+    partial = true,
+    patterns = List("P1"),
+    durationMs = 60000,
+    live = true
+  )
+  val withLive: List[MatchAnalysis] = all :+ live
+
+  test("a live match is listed only with live = true") {
+    assertEquals(
+      Aggregates.recentMatches(withLive, None, 20),
+      Aggregates.recentMatches(all, None, 20)
+    )
+    assertEquals(
+      Aggregates
+        .recentMatches(withLive, Some("trivia"), 20, live = true)
+        .map(m => (m.matchId, m.live, m.partial)),
+      List(("tv-live", true, true))
+    )
+    assertEquals(Aggregates.recentMatches(withLive, Some("snake"), 20, live = true), Nil)
+  }
+
+  test("a live match counts in no leaderboard, profile, game summary, pattern or summary") {
+    assertEquals(
+      Aggregates.leaderboard(withLive, "trivia", 20),
+      Aggregates.leaderboard(all, "trivia", 20)
+    )
+    assertEquals(Aggregates.player(withLive, "p-ana"), Aggregates.player(all, "p-ana"))
+    assertEquals(Aggregates.player(withLive, "p-nuevo"), None)
+    assertEquals(Aggregates.gameSummary(withLive, "trivia"), Aggregates.gameSummary(all, "trivia"))
+    assertEquals(Aggregates.gameSummary(List(live), "trivia"), None)
+    assertEquals(
+      Aggregates.patterns(withLive, None, None, 100),
+      Aggregates.patterns(all, None, None, 100)
+    )
+    assertEquals(Aggregates.overall(withLive), Aggregates.overall(all))
+  }
+
+  test("overall summary: matches and duration per game, distinct players, patterns and events") {
+    assertEquals(
+      Aggregates.overall(all),
+      OverallSummary(
+        matches = 5,
+        matchesByGame = Map("trivia" -> 3, "blackjack" -> 2),
+        players = 5, // p-ana, p-luis and p-sofi in trivia, p-kev and p-dani in blackjack
+        avgDurationMsByGame = Map("trivia" -> 720000.0, "blackjack" -> 1000.0),
+        patternsByType = Map("P1" -> 1, "P2" -> 2, "P5" -> 1),
+        eventsByType = Map("X" -> 5) // one X event per match
+      )
+    )
+    assertEquals(
+      Aggregates.overall(Nil),
+      OverallSummary(0, Map.empty, 0, Map.empty, Map.empty, Map.empty)
+    )
   }

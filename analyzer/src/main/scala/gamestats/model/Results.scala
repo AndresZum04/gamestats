@@ -29,7 +29,9 @@ final case class PlayerMatchStats(
     metrics: Map[String, Json]
 )
 
-/** The result of analyzing one match: what is stored and served. */
+/** The result of analyzing one match: what is stored and served. live marks the analysis of a LIVE
+  * copy, replaced by the COMPLETE batch when the match ends.
+  */
 final case class MatchAnalysis(
     matchId: String,
     gameId: String,
@@ -39,7 +41,8 @@ final case class MatchAnalysis(
     eventsByType: Map[String, Int],
     matchMetrics: Map[String, Json],
     players: List[PlayerMatchStats],
-    patterns: List[PatternMatch]
+    patterns: List[PatternMatch],
+    live: Boolean = false
 )
 
 /** One line of GET /api/v1/matches. */
@@ -47,6 +50,7 @@ final case class MatchSummary(
     matchId: String,
     gameId: String,
     partial: Boolean,
+    live: Boolean,
     analyzedAt: Instant,
     durationMs: Long,
     players: Int,
@@ -98,4 +102,15 @@ final case class GameSummary(
     abandonmentRate: Double,
     gameMetrics: Map[String, Json],
     patterns: Map[String, Int]
+)
+
+/** GET /api/v1/summary: every analyzed match of every game, without the ones still being played.
+  */
+final case class OverallSummary(
+    matches: Int,
+    matchesByGame: Map[String, Int],
+    players: Int,
+    avgDurationMsByGame: Map[String, Double],
+    patternsByType: Map[String, Int],
+    eventsByType: Map[String, Int]
 )

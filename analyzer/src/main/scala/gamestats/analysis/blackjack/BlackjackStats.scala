@@ -1,11 +1,11 @@
 package gamestats.analysis.blackjack
 
 import gamestats.analysis.Metrics.*
-import gamestats.model.BlackjackEvent
+import gamestats.model.{BlackjackEvent, MatchAnalysis}
 import gamestats.model.BlackjackEvent.*
 import io.circe.Json
 
-/** blackjack statistics B1 to B5. Every one is a named pure function over the typed events of one
+/** blackjack statistics B1 to B6. Every one is a named pure function over the typed events of one
   * match.
   */
 object BlackjackStats:
@@ -103,3 +103,47 @@ object BlackjackStats:
         "amount" -> int(b.amount)
       )
     )
+
+  /** B6 for one table with CPU players (`bots` of MATCH_STARTED) or decisions of the AI.
+    * tableWinner is HUMAN when a human is in first place and CPU otherwise; a PARTIAL or LIVE match
+    * has no placements, so it has no winner yet. aiFallbacks counts the AI_DECISION events where
+    * the AI gave its fallback answer. Empty for a table of humans only.
+    */
+  def cpuTable(
+      events: List[BlackjackEvent],
+      bots: List[String],
+      placements: Map[String, Int]
+  ): Map[String, Json] =
+    val ai = events.collect { case d: AiDecision => d }
+    val first = placements.collect { case (p, 1) => p }.toList
+    val winner = Option.when(bots.nonEmpty && first.nonEmpty)(
+      if first.exists(p => !bots.contains(p)) then "HUMAN" else "CPU"
+    )
+    if bots.isEmpty && ai.isEmpty then Map.empty
+    else
+      Map(
+        "bots" -> Json.arr(bots.distinct.sorted.map(str)*),
+        "aiDecisions" -> int(ai.size.toLong),
+        "aiFallbacks" -> int(ai.count(_.fallback).toLong)
+      ) ++ winner.map("tableWinner" -> str(_))
+
+  /** B6 for the game, from the cpuTable metrics of every match: tables with CPU players that have a
+    * winner, % won by humans and by the CPU, and the AI decisions with their fallbacks. Empty if no
+    * match had CPU players.
+    */
+  def cpuSummary(matches: List[MatchAnalysis]): Map[String, Json] =
+    def count(m: MatchAnalysis, key: String): Long =
+      m.matchMetrics.get(key).flatMap(_.asNumber).flatMap(_.toLong).getOrElse(0L)
+    val withCpu = matches.filter(_.matchMetrics.contains("aiDecisions"))
+    val winners = withCpu.flatMap(_.matchMetrics.get("tableWinner").flatMap(_.asString))
+    def pct(side: String): Double =
+      if winners.isEmpty then 0.0 else 100.0 * winners.count(_ == side) / winners.size
+    if withCpu.isEmpty then Map.empty
+    else
+      Map(
+        "cpuTables" -> int(winners.size.toLong),
+        "humanTableWinPct" -> num(pct("HUMAN")),
+        "cpuTableWinPct" -> num(pct("CPU")),
+        "aiDecisions" -> int(withCpu.map(count(_, "aiDecisions")).sum),
+        "aiFallbacks" -> int(withCpu.map(count(_, "aiFallbacks")).sum)
+      )

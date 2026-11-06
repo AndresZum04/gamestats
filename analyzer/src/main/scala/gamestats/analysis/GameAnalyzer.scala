@@ -70,6 +70,18 @@ final case class MatchContext[E](
       .flatMap(_.asNumber)
       .map(_.toDouble)
 
+  /** A list of strings from MATCH_STARTED (`bots` in blackjack); empty if it is missing or is not a
+    * list.
+    */
+  def startStrings(key: String): List[String] =
+    common
+      .collectFirst { case s: MatchStarted => s.settings(key) }
+      .flatten
+      .flatMap(_.asArray)
+      .toList
+      .flatten
+      .flatMap(_.asString)
+
   /** Match duration in minutes (G2). */
   def minutes: Double = GenericStats.durationMs(batch.events) / 60000.0
 
@@ -141,7 +153,8 @@ abstract class ComposedAnalyzer[E] extends GameAnalyzer:
       eventsByType = GenericStats.eventsByType(ctx.batch.events),
       matchMetrics = GenericStats.matchSummary(ctx.players, ctx.common) ++ matchMetrics(ctx),
       players = players,
-      patterns = Nil
+      patterns = Nil,
+      live = ctx.batch.live
     )
 
 /** Statistics shared by every game (G1 to G6), with no game specific metrics. Used for any game

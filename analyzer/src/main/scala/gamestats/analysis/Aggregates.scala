@@ -5,8 +5,21 @@ import io.circe.Json
 
 /** Statistics across matches. Pure functions over the list of stored analyses: the routes read the
   * store once and call these.
+  *
+  * A match still being played (live) is only listed by recentMatches with live = true. Every other
+  * function leaves it out until its COMPLETE batch replaces it, so a leaderboard never counts a
+  * match without a result.
   */
 object Aggregates:
+
+  /** The analyses of matches that are no longer being played. */
+  def closed(all: List[MatchAnalysis]): List[MatchAnalysis] = all.filterNot(_.live)
+
+  private def round(value: Double, decimals: Int): Double =
+    BigDecimal(value).setScale(decimals, BigDecimal.RoundingMode.HALF_UP).toDouble
+
+  private def avgDuration(matches: List[MatchAnalysis]): Double =
+    round(matches.map(_.durationMs).sum.toDouble / matches.size, 1)
 
   /** The game's metric, declared by its analyzer (None for a game without one). */
   def gameMetric(gameId: String): Option[String] = AnalyzerRegistry.forGame(gameId).ranking.metric
@@ -24,6 +37,7 @@ object Aggregates:
       a.matchId,
       a.gameId,
       a.partial,
+      a.live,
       a.analyzedAt,
       a.durationMs,
       a.players.size,
@@ -31,14 +45,17 @@ object Aggregates:
       a.patterns.size
     )
 
-  /** GET /api/v1/matches: most recent first, optionally for one game. */
+  /** GET /api/v1/matches: most recent first, optionally for one game. With live = true, only the
+    * matches still being played; otherwise, only the others.
+    */
   def recentMatches(
       all: List[MatchAnalysis],
       gameId: Option[String],
-      limit: Int
+      limit: Int,
+      live: Boolean = false
   ): List[MatchSummary] =
     all
-      .filter(a => gameId.forall(_ == a.gameId))
+      .filter(a => a.live == live && gameId.forall(_ == a.gameId))
       .sortBy(a => (a.analyzedAt, a.matchId))
       .reverse
       .take(limit)
@@ -67,7 +84,7 @@ object Aggregates:
   /** Every (player, match) of one game, folded per player into a Record. */
   def records(all: List[MatchAnalysis], gameId: String): Map[String, Record] =
     val metric = gameMetric(gameId)
-    all
+    closed(all)
       .filter(_.gameId == gameId)
       .flatMap(_.players)
       .groupBy(_.playerId)
@@ -81,7 +98,8 @@ object Aggregates:
 
   /** GET /api/v1/players/{playerId}: the player's record in each game. */
   def player(all: List[MatchAnalysis], playerId: String): Option[PlayerProfile] =
-    val games = all.filter(_.players.exists(_.playerId == playerId)).map(_.gameId).distinct.sorted
+    val games =
+      closed(all).filter(_.players.exists(_.playerId == playerId)).map(_.gameId).distinct.sorted
     Option.when(games.nonEmpty)(
       PlayerProfile(
         playerId,
@@ -116,7 +134,7 @@ object Aggregates:
     * game's analyzer over every match. None if the game has no stored matches.
     */
   def gameSummary(all: List[MatchAnalysis], gameId: String): Option[GameSummary] =
-    val matches = all.filter(_.gameId == gameId)
+    val matches = closed(all).filter(_.gameId == gameId)
     Option.when(matches.nonEmpty) {
       val entries = matches.flatMap(_.players)
       val left = entries.count(_.metrics.get("left").flatMap(_.asBoolean).contains(true))
@@ -124,18 +142,12 @@ object Aggregates:
         gameId = gameId,
         matches = matches.size,
         partialMatches = matches.count(_.partial),
-        avgDurationMs = BigDecimal(matches.map(_.durationMs).sum.toDouble / matches.size)
-          .setScale(1, BigDecimal.RoundingMode.HALF_UP)
-          .toDouble,
+        avgDurationMs = avgDuration(matches),
         playerEntries = entries.size,
         playersLeft = left,
         abandonmentRate =
           if entries.isEmpty then 0.0
-          else
-            BigDecimal(left.toDouble / entries.size)
-              .setScale(3, BigDecimal.RoundingMode.HALF_UP)
-              .toDouble
-        ,
+          else round(left.toDouble / entries.size, 3),
         gameMetrics = AnalyzerRegistry.forGame(gameId).gameMetrics(matches),
         patterns = matches.flatMap(_.patterns).groupBy(_.patternId).view.mapValues(_.size).toMap
       )
@@ -148,10 +160,25 @@ object Aggregates:
       patternId: Option[String],
       limit: Int
   ): List[PatternMatch] =
-    all
+    closed(all)
       .filter(a => gameId.forall(_ == a.gameId))
       .sortBy(a => (a.analyzedAt, a.matchId))
       .reverse
       .flatMap(_.patterns.sortBy(_.atMs))
       .filter(p => patternId.forall(_ == p.patternId))
       .take(limit)
+
+  /** GET /api/v1/summary: matches per game, distinct players, average duration per game, patterns
+    * per id and events per type, over every match that is no longer being played.
+    */
+  def overall(all: List[MatchAnalysis]): OverallSummary =
+    val matches = closed(all)
+    val byGame = matches.groupBy(_.gameId)
+    OverallSummary(
+      matches = matches.size,
+      matchesByGame = byGame.view.mapValues(_.size).toMap,
+      players = matches.flatMap(_.players.map(_.playerId)).distinct.size,
+      avgDurationMsByGame = byGame.view.mapValues(avgDuration).toMap,
+      patternsByType = matches.flatMap(_.patterns).groupMapReduce(_.patternId)(_ => 1)(_ + _),
+      eventsByType = matches.flatMap(_.eventsByType.toList).groupMapReduce(_._1)(_._2)(_ + _)
+    )

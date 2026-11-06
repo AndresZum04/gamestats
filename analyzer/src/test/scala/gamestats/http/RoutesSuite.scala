@@ -22,11 +22,16 @@ class RoutesSuite extends munit.FunSuite:
       .toList
       .filter(_.trim.nonEmpty)
 
-  def batch(matchId: String = "tv-0007", gameId: String = "trivia"): String =
-    s"""{"batchId":"b-1","matchId":"$matchId","gameId":"$gameId","gameVersion":"1.0","status":"COMPLETE",
+  def batch(
+      matchId: String = "tv-0007",
+      gameId: String = "trivia",
+      status: String = "COMPLETE",
+      events: Int = 10
+  ): String =
+    s"""{"batchId":"b-1","matchId":"$matchId","gameId":"$gameId","gameVersion":"1.0","status":"$status",
        |"startedAt":"2026-09-10T14:00:00.000Z","finishedAt":"2026-09-10T14:04:10.000Z",
-       |"players":["p-ana","p-luis","p-sofi"],"eventCount":10,"sentAt":"2026-09-10T14:04:11.000Z",
-       |"events":[${examples.take(10).mkString(",")}]}""".stripMargin
+       |"players":["p-ana","p-luis","p-sofi"],"eventCount":$events,"sentAt":"2026-09-10T14:04:11.000Z",
+       |"events":[${examples.take(events).mkString(",")}]}""".stripMargin
 
   def withApp[A](f: (HttpApp[IO], Path) => A): A =
     val dir = Files.createTempDirectory("results")
@@ -71,6 +76,34 @@ class RoutesSuite extends munit.FunSuite:
       run(app, post(batch()))
       run(app, post(batch()))
       assertEquals(Files.list(dir).iterator().asScala.count(_.toString.endsWith(".json")), 1)
+    }
+  }
+
+  test("a COMPLETE batch replaces the LIVE copy; a late LIVE copy never replaces a newer result") {
+    withApp { (app, dir) =>
+      def stored(body: String): Boolean =
+        run(app, post(body))._2.hcursor
+          .get[Boolean]("stored")
+          .fold(err => fail(err.toString), identity)
+      def get(path: String): Json = run(app, Request[IO](Method.GET, Uri.unsafeFromString(path)))._2
+      def ids(path: String): Vector[String] =
+        get(path).asArray.toVector.flatten.flatMap(_.hcursor.get[String]("matchId").toOption)
+      def live: Either[io.circe.DecodingFailure, Boolean] =
+        get("/api/v1/matches/tv-0007").hcursor.get[Boolean]("live")
+
+      assert(stored(batch(status = "LIVE", events = 6)))
+      assertEquals(ids("/api/v1/matches?live=true"), Vector("tv-0007"))
+      assertEquals(ids("/api/v1/matches"), Vector.empty)
+      assert(!stored(batch(status = "LIVE", events = 4)), "an older copy that arrives late")
+      assert(stored(batch(status = "LIVE", events = 8)))
+
+      assert(stored(batch()))
+      assertEquals((live, ids("/api/v1/matches?live=true")), (Right(false), Vector.empty))
+      assertEquals(ids("/api/v1/matches?live=false"), Vector("tv-0007"))
+      assert(!stored(batch(status = "LIVE", events = 10)), "a copy sent before the COMPLETE")
+      assertEquals(live, Right(false))
+      val reloaded = ResultStore.load(dir).unsafeRunSync()
+      assertEquals(reloaded.get("tv-0007").unsafeRunSync().map(_.live), Some(false))
     }
   }
 
@@ -147,11 +180,16 @@ class RoutesSuite extends munit.FunSuite:
       // One pattern per scenario: P1, P2, P3 and P5.
       assertEquals(get("/api/v1/patterns")._2.asArray.map(_.size), Some(4))
       assertEquals(get("/api/v1/patterns?patternId=P5")._2.asArray.map(_.size), Some(1))
+      val summary = get("/api/v1/summary")._2.hcursor
+      assertEquals(summary.get[Int]("matches"), Right(4))
+      assertEquals(summary.downField("matchesByGame").get[Int]("trivia"), Right(2))
+      assertEquals(summary.downField("patternsByType").get[Int]("P5"), Right(1))
 
       assertEquals(get("/api/v1/players/nobody")._1, Status.NotFound)
       assertEquals(get("/api/v1/games/card-duel/summary")._1, Status.NotFound)
       for bad <- List("0", "1001", "abc") do
         assertEquals(get(s"/api/v1/matches?limit=$bad")._1, Status.BadRequest)
+      assertEquals(get("/api/v1/matches?live=yes")._1, Status.BadRequest)
     }
   }
 
