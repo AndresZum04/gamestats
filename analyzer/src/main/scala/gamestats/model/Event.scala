@@ -20,10 +20,11 @@ final case class Event(
     data: JsonObject
 )
 
-/** Whether the ingestor saw MATCH_FINISHED or closed the match for inactivity.
+/** Whether the ingestor saw MATCH_FINISHED (COMPLETE), closed the match for inactivity (PARTIAL) or
+  * sent a copy of a match still being played (LIVE).
   */
 enum BatchStatus:
-  case COMPLETE, PARTIAL
+  case COMPLETE, PARTIAL, LIVE
 
 /** A whole match, sent by the ingestor with POST /api/v1/matches. Events come sorted by seq.
   */
@@ -40,4 +41,6 @@ final case class MatchBatch(
     sentAt: Instant,
     events: List[Event]
 ):
-  def partial: Boolean = status == BatchStatus.PARTIAL
+  /** A LIVE copy is analyzed like a PARTIAL batch: its final result is not known yet. */
+  def partial: Boolean = status != BatchStatus.COMPLETE
+  def live: Boolean = status == BatchStatus.LIVE

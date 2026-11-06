@@ -131,7 +131,7 @@ Un jugador con 3 vidas. La serpiente crece al comer, sube de nivel cada 5 frutas
 
 De 2 a 4 jugadores contra la casa, 10 rondas, 1000 fichas iniciales. La casa no es un jugador: sus eventos llevan `playerId` null. Prefijo de `matchId`: `bj-`.
 
-`MATCH_STARTED` lleva además `startingChips` (1000) y `rounds` (10). `MATCH_FINISHED` ordena a los jugadores por fichas finales. Un jugador que se queda sin fichas sale con `PLAYER_LEFT` y `reason` `"NO_CHIPS"`.
+`MATCH_STARTED` lleva además `startingChips` (1000) y `rounds` (10), y opcionalmente `bots`: la lista de ids de los jugadores que maneja la computadora (CPU). Los jugadores de `bots` también van en `players`. `MATCH_FINISHED` ordena a los jugadores por fichas finales. Un jugador que se queda sin fichas sale con `PLAYER_LEFT` y `reason` `"NO_CHIPS"`.
 
 | Tipo | `playerId` | Claves de `data` |
 | --- | --- | --- |
@@ -143,6 +143,7 @@ De 2 a 4 jugadores contra la casa, 10 rondas, 1000 fichas iniciales. La casa no 
 | `BUST` | el jugador | `round`, `handValue` (números) |
 | `BLACKJACK` | el jugador | `round` (número) |
 | `HAND_RESULT` | el jugador | `round` (número), `result` (`WIN`, `LOSE` o `PUSH`), `payout` (ganancia neta de la mano, negativa si perdió), `chips` (fichas después de la mano) |
+| `AI_DECISION` | el jugador CPU | `round`, `handValue` (números), `decision` (`HIT`, `STAND` o `DOUBLE`). Opcionales: `dealerUpcard` (string), `evHit`, `evStand`, `evDouble`, `elapsedMs` (números) y `fallback` (booleano, `true` si la IA no respondió a tiempo y se usó la jugada de respaldo) |
 
 El dealer se pasa cuando su último `DEALER_CARD` de la ronda tiene `dealerValue` mayor que 21.
 
@@ -155,11 +156,14 @@ El dealer se pasa cuando su último `DEALER_CARD` de la ronda tiene `dealerValue
 {"playerId":"p-gabo","type":"BUST","data":{"round":1,"handValue":24}}
 {"playerId":"p-mari","type":"BLACKJACK","data":{"round":4}}
 {"playerId":"p-mari","type":"HAND_RESULT","data":{"round":1,"result":"WIN","payout":200,"chips":1200}}
+{"playerId":"cpu-1","type":"AI_DECISION","data":{"round":2,"decision":"STAND","handValue":13,"dealerUpcard":"5D","evHit":-0.23,"evStand":-0.16,"elapsedMs":18,"fallback":false}}
 ```
+
+`AI_DECISION` registra lo que decidió la IA; la jugada en sí sigue llegando como `DECISION`, igual que la de un humano.
 
 ### Claves propias en los eventos generales
 
-Algunos juegos piden claves extra en eventos generales: `questions` en el `MATCH_STARTED` de Trivia, `lives` en el de Snake, `startingChips` y `rounds` en el de Blackjack. Son parte del formato y los juegos tienen que enviarlas. El `ingestor` no las valida, porque un juego no puede redefinir un tipo general en su configuración; el `analyzer` las lee y, si faltan, usa los valores por defecto (10 preguntas, 3 vidas, 1000 fichas y 10 rondas).
+Algunos juegos piden claves extra en eventos generales: `questions` en el `MATCH_STARTED` de Trivia, `lives` en el de Snake, `startingChips`, `rounds` y `bots` (opcional) en el de Blackjack. Son parte del formato y los juegos tienen que enviarlas. El `ingestor` no las valida, porque un juego no puede redefinir un tipo general en su configuración; el `analyzer` las lee y, si faltan, usa los valores por defecto (10 preguntas, 3 vidas, 1000 fichas y 10 rondas).
 
 ## Configuración de un juego
 

@@ -172,3 +172,79 @@ class BlackjackStatsSuite extends munit.FunSuite:
       List(("p-gabo", Some(1)), ("p-mari", Some(2)))
     )
   }
+
+  def ai(at: Double, p: String, decision: String, value: Int, fallback: Boolean): Spec =
+    e(
+      at,
+      "AI_DECISION",
+      p,
+      "round" -> n(1),
+      "decision" -> s(decision),
+      "handValue" -> n(value),
+      "fallback" -> b(fallback)
+    )
+
+  /** One round of p-mari against the CPU player cpu-1, which decides twice (the second time with
+    * its fallback). winner takes first place; a LIVE copy has no MATCH_FINISHED.
+    */
+  def cpuTable(winner: String, status: BatchStatus = BatchStatus.COMPLETE): MatchBatch =
+    val loser = if winner == "cpu-1" then "p-mari" else "cpu-1"
+    val played = List(
+      sys(
+        0,
+        "MATCH_STARTED",
+        "players" -> arr("p-mari", "cpu-1"),
+        "mode" -> s("TABLE"),
+        "startingChips" -> n(500),
+        "bots" -> arr("cpu-1")
+      ),
+      sys(1, "ROUND_STARTED", "round" -> n(1)),
+      bet(2, "p-mari", 1, 100, 500),
+      bet(3, "cpu-1", 1, 100, 500),
+      ai(4, "cpu-1", "HIT", 12, fallback = false),
+      ai(5, "cpu-1", "STAND", 17, fallback = true),
+      hand(6, winner, 1, "WIN", 100, 600),
+      hand(7, loser, 1, "LOSE", -100, 400)
+    )
+    val finished =
+      sys(
+        8,
+        "MATCH_FINISHED",
+        "durationMs" -> n(8000),
+        "results" -> results(winner -> 1, loser -> 2)
+      )
+    if status == BatchStatus.LIVE then batch("blackjack", played, status, matchId = "bj-cpu")
+    else batch("blackjack", played :+ finished, status, matchId = "bj-cpu")
+
+  test("B6: a table won by the CPU, with its AI decisions and fallbacks") {
+    val m = BlackjackAnalyzer.analyze(cpuTable("cpu-1")).matchMetrics
+    assertEquals(m.get("tableWinner"), Some(Json.fromString("CPU")))
+    assertEquals(m.get("bots"), Some(arr("cpu-1")))
+    assertEquals(dbl(m("aiDecisions")), 2.0)
+    assertEquals(dbl(m("aiFallbacks")), 1.0)
+    assertEquals(
+      BlackjackAnalyzer.analyze(cpuTable("p-mari")).matchMetrics.get("tableWinner"),
+      Some(Json.fromString("HUMAN"))
+    )
+  }
+
+  test("B6: a live table has no winner yet, and a table of humans has no B6") {
+    val live = BlackjackAnalyzer.analyze(cpuTable("cpu-1", BatchStatus.LIVE))
+    assert(live.live && live.partial)
+    assertEquals(live.matchMetrics.get("tableWinner"), None)
+    assertEquals(dbl(live.matchMetrics("aiDecisions")), 2.0)
+    for key <- List("bots", "aiDecisions", "aiFallbacks", "tableWinner") do
+      assertEquals(result.matchMetrics.get(key), None, key)
+  }
+
+  test("B6 for the game: % of tables with CPU won by humans and by the CPU") {
+    val matches =
+      List("cpu-1", "p-mari", "p-mari").map(w => BlackjackAnalyzer.analyze(cpuTable(w))) :+ result
+    val g = BlackjackAnalyzer.gameMetrics(matches)
+    assertEquals(dbl(g("cpuTables")), 3.0) // the table of humans only does not count
+    assertEquals(dbl(g("humanTableWinPct")), 66.7)
+    assertEquals(dbl(g("cpuTableWinPct")), 33.3)
+    assertEquals(dbl(g("aiDecisions")), 6.0)
+    assertEquals(dbl(g("aiFallbacks")), 3.0)
+    assertEquals(BlackjackAnalyzer.gameMetrics(List(result)), Map.empty)
+  }

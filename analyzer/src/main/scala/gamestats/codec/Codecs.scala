@@ -72,10 +72,17 @@ object Codecs:
   given Codec.AsObject[MatchBatch] = deriveCodec
   given Codec.AsObject[PatternMatch] = deriveCodec
   given Codec.AsObject[PlayerMatchStats] = deriveCodec
-  given Codec.AsObject[MatchAnalysis] = deriveCodec
+  private lazy val analysisCodec: Codec.AsObject[MatchAnalysis] = deriveCodec
+  given Encoder.AsObject[MatchAnalysis] = analysisCodec
+
+  /** Results saved by version 2.0.0 have no `live` field: they were never live. */
+  given Decoder[MatchAnalysis] = analysisCodec.prepare(
+    _.withFocus(_.mapObject(o => if o.contains("live") then o else o.add("live", Json.False)))
+  )
   given Codec.AsObject[MatchSummary] = deriveCodec
   given Codec.AsObject[PlayerGameStats] = deriveCodec
   given Codec.AsObject[PlayerProfile] = deriveCodec
   given Codec.AsObject[LeaderboardEntry] = deriveCodec
   given Codec.AsObject[Leaderboard] = deriveCodec
   given Codec.AsObject[GameSummary] = deriveCodec
+  given Codec.AsObject[OverallSummary] = deriveCodec

@@ -137,6 +137,22 @@ class DecodingSuite extends munit.FunSuite:
     val json = analysis.asJson
     assertEquals(json.hcursor.get[String]("analyzedAt"), Right("2026-09-10T14:20:00.000Z"))
     assertEquals(json.as[MatchAnalysis], Right(analysis))
+    // a result saved by version 2.0.0 has no `live` field
+    assertEquals(json.mapObject(_.remove("live")).as[MatchAnalysis], Right(analysis))
+    assertEquals(
+      json.mapObject(_.add("live", Json.True)).as[MatchAnalysis],
+      Right(analysis.copy(live = true))
+    )
+  }
+
+  test("a LIVE batch decodes and is analyzed like a PARTIAL one") {
+    val raw =
+      s"""{"batchId":"b-2","matchId":"tv-0007","gameId":"trivia","gameVersion":"1.0","status":"LIVE",
+         |"startedAt":"2026-09-10T14:00:00.000Z","finishedAt":null,"players":["p-ana"],"eventCount":0,
+         |"sentAt":"2026-09-10T14:20:00.000Z","events":[]}""".stripMargin
+    val batch = decode[MatchBatch](raw).fold(err => fail(err.toString), identity)
+    assertEquals((batch.status, batch.partial, batch.live), (BatchStatus.LIVE, true, true))
+    assertEquals(decode[MatchBatch](raw.replace("LIVE", "ALIVE")).isLeft, true)
   }
 
   test("event encoding writes `type` back and keeps the data") {

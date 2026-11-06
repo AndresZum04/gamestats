@@ -46,10 +46,22 @@ object Routes:
         case Right(batch) => analyzeAndStore(store, batch)
       }
 
-    case GET -> Root / "api" / "v1" / "matches" :? GameParam(game) +& LimitParam(limit) =>
-      withLimit(limit, 20) { n =>
-        store.all.flatMap(all => Ok(Aggregates.recentMatches(all, game, n).asJson))
-      }
+    case GET -> Root / "api" / "v1" / "matches" :? GameParam(game) +& LimitParam(
+          limit
+        ) +& LiveParam(
+          live
+        ) =>
+      live.map(_.toBooleanOption) match
+        case Some(None) => BadRequest(error("live must be true or false"))
+        case flag =>
+          withLimit(limit, 20) { n =>
+            store.all.flatMap(all =>
+              Ok(Aggregates.recentMatches(all, game, n, flag.flatten.getOrElse(false)).asJson)
+            )
+          }
+
+    case GET -> Root / "api" / "v1" / "summary" =>
+      store.all.flatMap(all => Ok(Aggregates.overall(all).asJson))
 
     case GET -> Root / "api" / "v1" / "players" / playerId =>
       store.all.map(Aggregates.player(_, playerId)).flatMap {
@@ -85,6 +97,7 @@ object Routes:
   private object GameParam extends OptionalQueryParamDecoderMatcher[String]("gameId")
   private object PatternParam extends OptionalQueryParamDecoderMatcher[String]("patternId")
   private object LimitParam extends OptionalQueryParamDecoderMatcher[String]("limit")
+  private object LiveParam extends OptionalQueryParamDecoderMatcher[String]("live")
 
   private val maxLimit = 1000
 
@@ -103,19 +116,23 @@ object Routes:
     for
       now <- IO.realTimeInstant
       analysis = AnalyzerRegistry.forGame(batch.gameId).analyze(batch).copy(analyzedAt = now)
-      _ <- store.put(analysis)
-      _ <- IO(log.info(summary(analysis)))
+      stored <- store.put(analysis)
+      _ <- IO(
+        if stored then log.info(summary(analysis))
+        else log.info(s"ignored live copy matchId=${analysis.matchId}: a newer result is stored")
+      )
       resp <- Ok(
         Json.obj(
           "matchId" -> Json.fromString(analysis.matchId),
           "patternsFound" -> Json.fromInt(analysis.patterns.size),
-          "analyzedAt" -> (analysis.analyzedAt: Instant).asJson
+          "analyzedAt" -> (analysis.analyzedAt: Instant).asJson,
+          "stored" -> Json.fromBoolean(stored)
         )
       )
     yield resp
 
   private def summary(a: MatchAnalysis): String =
-    s"analyzed matchId=${a.matchId} gameId=${a.gameId} partial=${a.partial} " +
+    s"analyzed matchId=${a.matchId} gameId=${a.gameId} partial=${a.partial} live=${a.live} " +
       s"events=${a.eventsByType.values.sum} patterns=${a.patterns.size}"
 
   /** Logs method, path, status and duration of every request but /health, and turns unexpected

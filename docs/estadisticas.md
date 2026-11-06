@@ -113,6 +113,7 @@ Archivo: `analysis/blackjack/BlackjackStats.scala`. Las fichas iniciales salen d
 | B3 | jugador | Busts y blackjacks | Cantidad de `BUST` y de `BLACKJACK` | `foldLeft` |
 | B4 | jugador | Efectividad al doblar | Une cada `DECISION` con `action = DOUBLE` con la `HAND_RESULT` del mismo (jugador, ronda): % ganadas y ganancia neta de esas manos | `toMap` por `(playerId, round)`, `flatMap` |
 | B5 | partida | Resumen de la mesa | Ganancia de la casa (suma de `payout` con el signo invertido), rondas en que el dealer se pasó (su último `DEALER_CARD` de la ronda tiene `dealerValue` > 21) y apuesta más alta | `groupBy(_.round)`, `maxBy`, `minByOption` |
+| B6 | partida y juego | Humanos frente a CPU | Por mesa con `bots` en `MATCH_STARTED`: `tableWinner` es `HUMAN` si algún humano quedó primero y `CPU` si no, más la cantidad de `AI_DECISION` (`aiDecisions`) y de esas con `fallback` (`aiFallbacks`). Por juego: `cpuTables` (mesas con CPU y ganador), `humanTableWinPct` y `cpuTableWinPct` sobre esas mesas, y el total de decisiones y fallbacks | `collect`, `count`, `filter`, `sum` |
 
 Ejemplo (`bj-0001`, p-diego y la partida):
 
@@ -128,9 +129,19 @@ Ejemplo (`bj-0001`, p-diego y la partida):
 
 Cada jugador guarda también `chipsByRound` (fichas después de cada mano), que el tablero usa para el gráfico de fichas.
 
+B6 solo aparece en mesas con `bots` o con `AI_DECISION`, así que una mesa de solo humanos queda igual. Una partida `PARTIAL` o en vivo todavía no tiene `tableWinner`. Ejemplo de una mesa y del resumen del juego (`gameMetrics` de `GET /api/v1/games/blackjack/summary`):
+
+```json
+"matchMetrics": {"bots": ["cpu-1"], "tableWinner": "CPU", "aiDecisions": 2, "aiFallbacks": 1, …}
+"gameMetrics": {"cpuTables": 3, "humanTableWinPct": 66.7, "cpuTableWinPct": 33.3,
+  "aiDecisions": 6, "aiFallbacks": 3}
+```
+
 ## Agregados entre partidas
 
 Archivo: `analysis/Aggregates.scala`. Las rutas leen todos los resultados guardados una sola vez y se los pasan a estas funciones.
+
+Una partida en vivo (lote `LIVE`, guardada con `live: true`) no cuenta en ninguno de estos agregados hasta que su lote `COMPLETE` la reemplaza. Solo se lista con `GET /api/v1/matches?live=true` y se lee completa en `GET /api/v1/matches/{id}`, con las estadísticas que lleva hasta ese momento.
 
 - Perfil de un jugador (`GET /api/v1/players/{id}`): partidas jugadas, victorias y promedio de la métrica del juego, por cada juego. Se arma con `groupBy(_.playerId)` y un `foldLeft` hacia un `Record` inmutable.
 - Leaderboard (`GET /api/v1/games/{id}/leaderboard`): victoria es el primer lugar (`placement` 1) en los tres juegos, pero el total de victorias nunca decide el orden, porque crece con las partidas jugadas y favorecería a quien juega más. Cada analizador declara un `Ranking` con su métrica y si el juego es de un jugador (`singlePlayer`):
@@ -138,7 +149,8 @@ Archivo: `analysis/Aggregates.scala`. Las rutas leen todos los resultados guarda
   - Juego de un jugador (snake): cada partida termina en victoria, así que se ordena por la métrica (largo máximo promedio) y, en empate, por más partidas jugadas.
 
   Cada entrada trae `matches`, para que se vea de cuántas partidas sale cada promedio. No hay un mínimo de partidas: un jugador con una sola partida puede quedar primero, y la columna de partidas lo deja a la vista.
-- Resumen del juego (`GET /api/v1/games/{id}/summary`): partidas, duración promedio, G4, patrones por tipo y `gameMetrics`, que calcula el analizador de cada juego sobre todas sus partidas (T5 en trivia, S5 en snake).
+- Resumen del juego (`GET /api/v1/games/{id}/summary`): partidas, duración promedio, G4, patrones por tipo y `gameMetrics`, que calcula el analizador de cada juego sobre todas sus partidas (T5 en trivia, S5 en snake, B6 en blackjack).
+- Resumen general (`GET /api/v1/summary`, función `overall`): partidas en total y por juego, jugadores distintos, duración promedio por juego, patrones por id y eventos por tipo, con `groupBy` y `groupMapReduce`.
 
 ```json
 {"gameId": "blackjack", "metric": "netGain", "singlePlayer": false, "entries": [

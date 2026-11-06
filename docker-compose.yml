@@ -35,6 +35,8 @@ services:
       ANALYZER_URL: http://analyzer:8081
       CONFIG_DIR: /app/configs/games
       DATA_DIR: /data
+      # Copias LIVE de las partidas abiertas cada ese tiempo (0 = apagado).
+      LIVE_SNAPSHOT_INTERVAL: ${LIVE_SNAPSHOT_INTERVAL:-0}
     volumes: [*data]
     depends_on: { analyzer: { condition: service_healthy } }
     healthcheck:
