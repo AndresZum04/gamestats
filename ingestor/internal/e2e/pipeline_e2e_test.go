@@ -276,3 +276,61 @@ func TestDuplicateAndLateEndToEnd(t *testing.T) {
 		t.Fatalf("analyzer got %d batches, want 1", n)
 	}
 }
+
+// C02: with LIVE_SNAPSHOT_INTERVAL on, an open match reaches the analyzer
+// as LIVE copies while it is played, only when it has new events, and then
+// exactly one COMPLETE batch closes it.
+func TestLiveCopiesThenOneCompleteBatch(t *testing.T) {
+	const size = 40
+	sys := startSystem(t, pipeline.Config{IdleTimeout: time.Minute, FinishGrace: time.Second, LiveInterval: 50 * time.Millisecond}, &fakeAnalyzer{})
+	lines := triviaMatch("tv-live", size)
+	submit := func(ls [][]byte) {
+		for _, l := range ls {
+			if err := sys.intake.Submit(context.Background(), l); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	live := func() []model.MatchBatch {
+		var out []model.MatchBatch
+		for _, b := range sys.analyzer.received() {
+			if b.Status == model.StatusLive {
+				out = append(out, b)
+			}
+		}
+		return out
+	}
+
+	submit(lines[:size/2])
+	waitUntil(t, 3*time.Second, func() bool { return len(live()) == 1 })
+	first := live()[0]
+	if first.EventCount != size/2 || first.FinishedAt != nil {
+		t.Fatalf("first LIVE: %d events, finishedAt %v", first.EventCount, first.FinishedAt)
+	}
+	// No new events: no new copy.
+	time.Sleep(250 * time.Millisecond)
+	if n := len(live()); n != 1 {
+		t.Fatalf("%d LIVE copies without new events, want 1", n)
+	}
+	if snap, _ := sys.registry.Get("tv-live"); snap.State != state.StatusOpen {
+		t.Fatalf("match state %s while live, want OPEN", snap.State)
+	}
+
+	submit(lines[size/2:])
+	waitUntil(t, 5*time.Second, func() bool {
+		snap, _ := sys.registry.Get("tv-live")
+		return snap.State == state.StatusSent
+	})
+	var complete []model.MatchBatch
+	for _, b := range sys.analyzer.received() {
+		if b.Status == model.StatusComplete {
+			complete = append(complete, b)
+		}
+	}
+	if len(complete) != 1 || complete[0].EventCount != size {
+		t.Fatalf("%d COMPLETE batches, want 1 with %d events", len(complete), size)
+	}
+	if sys.sender.Sent() != 1 || sys.sender.LiveSent() != int64(len(live())) {
+		t.Errorf("sent=%d liveSent=%d, live received=%d", sys.sender.Sent(), sys.sender.LiveSent(), len(live()))
+	}
+}

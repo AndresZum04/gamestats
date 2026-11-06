@@ -40,6 +40,7 @@ func newServer(t *testing.T) (*Server, http.Handler) {
 		Rejected: rej,
 		Registry: matches,
 		Sender:   sender.New(sender.DefaultConfig("http://unused", 1), matches, ob),
+		Games:    reg.GameIDs(),
 	}
 	return s, s.Handler()
 }
@@ -111,6 +112,39 @@ func TestMatchEndpoints(t *testing.T) {
 	}
 	if rec := do(t, h, http.MethodGet, "/api/v1/matches/nope", ""); rec.Code != http.StatusNotFound {
 		t.Errorf("status %d, want 404", rec.Code)
+	}
+}
+
+// Three matches of two games: snake open and finished, trivia closed by
+// inactivity. Blackjack has none but is still listed.
+func TestGamesEndpoint(t *testing.T) {
+	s, h := newServer(t)
+	at := func(sec int) time.Time { return time.Date(2026, 11, 6, 20, 0, sec, 0, time.UTC) }
+	s.Registry.Put(state.Snapshot{MatchID: "sn-1", GameID: "snake", State: state.StatusOpen, EventCount: 4, Started: true, LastEventAt: at(30)})
+	s.Registry.Put(state.Snapshot{MatchID: "sn-2", GameID: "snake", State: state.StatusSent, EventCount: 10, Started: true, Finished: true, LastEventAt: at(10)})
+	s.Registry.Put(state.Snapshot{MatchID: "tv-1", GameID: "trivia", State: state.StatusPartialSent, EventCount: 7, Started: true, LastEventAt: at(20)})
+
+	rec := do(t, h, http.MethodGet, "/api/v1/games", "")
+	var got []GameInstances
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || rec.Code != http.StatusOK {
+		t.Fatalf("status %d, %s", rec.Code, rec.Body)
+	}
+	ts := func(sec int) *string { s := model.FormatTime(at(sec)); return &s }
+	want := []GameInstances{
+		{GameID: "blackjack"},
+		{GameID: "snake", Open: 1, Finished: 1, Started: 2, Events: 14, LastEventAt: ts(30)},
+		{GameID: "trivia", Partial: 1, Started: 1, Events: 7, LastEventAt: ts(20)},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %+v", got)
+	}
+	for i := range want {
+		g, w := got[i], want[i]
+		if g.GameID != w.GameID || g.Open != w.Open || g.Finished != w.Finished || g.Partial != w.Partial ||
+			g.Started != w.Started || g.Events != w.Events || (g.LastEventAt == nil) != (w.LastEventAt == nil) ||
+			(g.LastEventAt != nil && *g.LastEventAt != *w.LastEventAt) {
+			t.Errorf("row %d = %+v, want %+v", i, g, w)
+		}
 	}
 }
 

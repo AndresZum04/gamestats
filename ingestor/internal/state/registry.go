@@ -15,6 +15,10 @@ type Snapshot struct {
 	ActivePlayers int
 	LastEventAt   time.Time
 	Players       map[string]PlayerStatus
+	// Started and Finished tell whether MATCH_STARTED and MATCH_FINISHED
+	// arrived, independently of State.
+	Started  bool
+	Finished bool
 }
 
 // Registry holds the latest snapshot of every match. Workers write it after

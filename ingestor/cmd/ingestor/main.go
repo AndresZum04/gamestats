@@ -52,7 +52,8 @@ func run() error {
 	if err := os.MkdirAll(eventsDir, 0o755); err != nil {
 		return err
 	}
-	slog.Info("ingestor starting", "port", cfg.Port, "games", registry.GameIDs(), "eventsDir", eventsDir)
+	slog.Info("ingestor starting", "port", cfg.Port, "games", registry.GameIDs(), "eventsDir", eventsDir,
+		"liveSnapshotInterval", cfg.LiveSnapshotInterval.String())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -75,8 +76,9 @@ func run() error {
 	matches := state.NewRegistry()
 	batches := make(chan model.MatchBatch, cfg.SenderWorkers*2)
 	dispatcher := pipeline.NewDispatcher(input, batches, pipeline.Config{
-		IdleTimeout: cfg.MatchIdleTimeout,
-		FinishGrace: cfg.MatchFinishGrace,
+		IdleTimeout:  cfg.MatchIdleTimeout,
+		FinishGrace:  cfg.MatchFinishGrace,
+		LiveInterval: cfg.LiveSnapshotInterval,
 	}, matches, rejected)
 	go dispatcher.Run()
 
@@ -93,7 +95,7 @@ func run() error {
 		send.Run(ctx, batches)
 	}()
 
-	handler := (&api.Server{Intake: intake, Rejected: rejected, Registry: matches, Sender: send}).Handler()
+	handler := (&api.Server{Intake: intake, Rejected: rejected, Registry: matches, Sender: send, Games: registry.GameIDs()}).Handler()
 	srv := &http.Server{Addr: ":" + cfg.Port, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- srv.ListenAndServe() }()

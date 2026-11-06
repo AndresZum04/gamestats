@@ -17,8 +17,11 @@ type Config struct {
 	WatchInterval    time.Duration
 	MatchIdleTimeout time.Duration
 	MatchFinishGrace time.Duration
-	SenderWorkers    int
-	InputBuffer      int
+	// LiveSnapshotInterval sends a LIVE copy of each open match this often;
+	// 0 turns it off.
+	LiveSnapshotInterval time.Duration
+	SenderWorkers        int
+	InputBuffer          int
 }
 
 // Load reads the environment and applies the defaults for local runs.
@@ -37,6 +40,9 @@ func Load() (Config, error) {
 		return cfg, err
 	}
 	if cfg.MatchFinishGrace, err = duration("MATCH_FINISH_GRACE", 5*time.Second); err != nil {
+		return cfg, err
+	}
+	if cfg.LiveSnapshotInterval, err = optionalDuration("LIVE_SNAPSHOT_INTERVAL"); err != nil {
 		return cfg, err
 	}
 	if cfg.SenderWorkers, err = positiveInt("SENDER_WORKERS", 4); err != nil {
@@ -65,6 +71,14 @@ func duration(key string, def time.Duration) (time.Duration, error) {
 		return 0, fmt.Errorf("%s=%q must be a positive duration like 1s or 500ms", key, v)
 	}
 	return d, nil
+}
+
+// optionalDuration is like duration, but empty or 0 means off (zero).
+func optionalDuration(key string) (time.Duration, error) {
+	if v := os.Getenv(key); v == "" || v == "0" {
+		return 0, nil
+	}
+	return duration(key, 0)
 }
 
 func positiveInt(key string, def int) (int, error) {

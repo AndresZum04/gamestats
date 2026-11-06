@@ -41,8 +41,10 @@ type Stats struct {
 	MatchesByState map[state.MatchStatus]int `json:"matchesByState"`
 	BatchesSent    int64                     `json:"batchesSent"`
 	BatchesFailed  int64                     `json:"batchesFailed"`
-	OutboxSize     int                       `json:"outboxSize"`
-	Goroutines     int                       `json:"goroutines"`
+	// LiveBatchesSent counts LIVE copies, which are not in BatchesSent.
+	LiveBatchesSent int64 `json:"liveBatchesSent"`
+	OutboxSize      int   `json:"outboxSize"`
+	Goroutines      int   `json:"goroutines"`
 }
 
 func (s *Server) stats(w http.ResponseWriter, _ *http.Request) {
@@ -53,15 +55,16 @@ func (s *Server) stats(w http.ResponseWriter, _ *http.Request) {
 	}
 	byState := s.Registry.CountByState()
 	writeJSON(w, http.StatusOK, Stats{
-		Received:       s.Intake.Received(),
-		Accepted:       s.Intake.Accepted(),
-		Rejected:       rejected,
-		RejectedByCode: byCode,
-		ActiveMatches:  byState[state.StatusOpen],
-		MatchesByState: byState,
-		BatchesSent:    s.Sender.Sent(),
-		BatchesFailed:  s.Sender.Failed(),
-		OutboxSize:     s.Sender.OutboxSize(),
-		Goroutines:     runtime.NumGoroutine(),
+		Received:        s.Intake.Received(),
+		Accepted:        s.Intake.Accepted(),
+		Rejected:        rejected,
+		RejectedByCode:  byCode,
+		ActiveMatches:   byState[state.StatusOpen],
+		MatchesByState:  byState,
+		BatchesSent:     s.Sender.Sent(),
+		BatchesFailed:   s.Sender.Failed(),
+		LiveBatchesSent: s.Sender.LiveSent(),
+		OutboxSize:      s.Sender.OutboxSize(),
+		Goroutines:      runtime.NumGoroutine(),
 	})
 }

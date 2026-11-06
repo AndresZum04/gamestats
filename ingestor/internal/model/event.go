@@ -47,6 +47,9 @@ const (
 	StatusComplete BatchStatus = "COMPLETE"
 	// StatusPartial means the match was sent after an inactivity timeout.
 	StatusPartial BatchStatus = "PARTIAL"
+	// StatusLive is a copy of a match that is still open, sent every
+	// LIVE_SNAPSHOT_INTERVAL. The final batch replaces it.
+	StatusLive BatchStatus = "LIVE"
 )
 
 // MatchBatch is a whole match as sent to POST /api/v1/matches.

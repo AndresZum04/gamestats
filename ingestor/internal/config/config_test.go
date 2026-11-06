@@ -7,7 +7,7 @@ import (
 
 func TestDefaults(t *testing.T) {
 	for _, k := range []string{"PORT", "ANALYZER_URL", "CONFIG_DIR", "DATA_DIR", "WATCH_INTERVAL",
-		"MATCH_IDLE_TIMEOUT", "MATCH_FINISH_GRACE", "SENDER_WORKERS", "INPUT_BUFFER"} {
+		"MATCH_IDLE_TIMEOUT", "MATCH_FINISH_GRACE", "LIVE_SNAPSHOT_INTERVAL", "SENDER_WORKERS", "INPUT_BUFFER"} {
 		t.Setenv(k, "")
 	}
 	cfg, err := Load()
@@ -32,7 +32,18 @@ func TestOverridesAndErrors(t *testing.T) {
 		t.Fatalf("cfg=%+v err=%v", cfg, err)
 	}
 
-	for key, bad := range map[string]string{"WATCH_INTERVAL": "soon", "INPUT_BUFFER": "-1", "SENDER_WORKERS": "0"} {
+	for _, on := range []struct {
+		v    string
+		want time.Duration
+	}{{"0", 0}, {"10s", 10 * time.Second}} {
+		t.Setenv("LIVE_SNAPSHOT_INTERVAL", on.v)
+		if cfg, err := Load(); err != nil || cfg.LiveSnapshotInterval != on.want {
+			t.Fatalf("LIVE_SNAPSHOT_INTERVAL=%s: got %v err=%v", on.v, cfg.LiveSnapshotInterval, err)
+		}
+	}
+	t.Setenv("LIVE_SNAPSHOT_INTERVAL", "")
+
+	for key, bad := range map[string]string{"WATCH_INTERVAL": "soon", "INPUT_BUFFER": "-1", "SENDER_WORKERS": "0", "LIVE_SNAPSHOT_INTERVAL": "-1s"} {
 		t.Run(key, func(t *testing.T) {
 			t.Setenv(key, bad)
 			if _, err := Load(); err == nil {
