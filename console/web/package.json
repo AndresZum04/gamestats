@@ -1,0 +1,19 @@
+{
+  "name": "@gameconsole/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web console: lobby, game instances and the stats panel",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@gameconsole/shared": "0.1.0"
+  },
+  "devDependencies": {
+    "vite": "5.4.21"
+  }
+}

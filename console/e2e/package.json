@@ -1,0 +1,7 @@
+{
+  "name": "@gameconsole/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "End-to-end tests with Playwright (added in C20)",
+  "type": "module"
+}

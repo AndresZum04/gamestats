@@ -1,6 +1,6 @@
-# Integración continua: en cada push y pull request compila y prueba Go y
-# Scala por separado, y después levanta todo con Docker y corre el
-# simulador de punta a punta.
+# Integración continua: en cada push y pull request compila y prueba Go,
+# Scala y la consola (TypeScript) por separado, y después levanta todo con
+# Docker y corre el simulador de punta a punta.
 name: CI
 
 on:
@@ -84,6 +84,34 @@ jobs:
         with:
           name: analyzer-jar
           path: analyzer/target/scala-*/analyzer.jar
+
+  console:
+    name: Consola (TypeScript)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - name: Dependencias
+        run: npm ci
+
+      # lint incluye prettier --check: falla si algo no tiene formato.
+      - name: Lint y formato
+        run: npm run lint
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Pruebas
+        run: npm test
 
   integration:
     name: Integración con Docker

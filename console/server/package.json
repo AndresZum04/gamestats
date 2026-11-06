@@ -1,0 +1,21 @@
+{
+  "name": "@gameconsole/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Console server: receives events, talks to Prolog and relays GameStats",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gameconsole/shared": "0.1.0",
+    "fastify": "5.12.8"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}
