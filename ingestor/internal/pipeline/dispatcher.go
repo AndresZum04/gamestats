@@ -28,6 +28,9 @@ type Config struct {
 	IdleTimeout time.Duration
 	// FinishGrace is how long to wait for missing seqs after MATCH_FINISHED.
 	FinishGrace time.Duration
+	// LiveInterval sends a LIVE copy of each open match this often, only
+	// if new events arrived. 0 turns it off.
+	LiveInterval time.Duration
 }
 
 // deps is what every worker shares with the dispatcher.

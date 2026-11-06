@@ -106,6 +106,25 @@ func TestPartialBatchIsMarkedPartialSent(t *testing.T) {
 	}
 }
 
+// A LIVE copy is tried once. Failed or delivered, the match stays OPEN, no
+// file goes to the outbox and the counters of real batches do not move.
+func TestLiveBatchIsTriedOnceAndKeepsTheMatchOpen(t *testing.T) {
+	f := newFakeAnalyzer(t, http.StatusServiceUnavailable)
+	s, reg, ob := newSender(t, f.srv.URL)
+	reg.Put(state.Snapshot{MatchID: "sn-live", State: state.StatusOpen})
+
+	s.deliver(context.Background(), batch("sn-live", model.StatusLive))
+	if f.calls.Load() != 1 || stateOf(reg, "sn-live") != state.StatusOpen || ob.Size() != 0 || s.Failed() != 0 {
+		t.Fatalf("failed: calls=%d state=%s outbox=%d failed=%d", f.calls.Load(), stateOf(reg, "sn-live"), ob.Size(), s.Failed())
+	}
+
+	f.setScript(http.StatusOK)
+	s.deliver(context.Background(), batch("sn-live", model.StatusLive))
+	if stateOf(reg, "sn-live") != state.StatusOpen || s.LiveSent() != 1 || s.Sent() != 0 {
+		t.Fatalf("delivered: state=%s live=%d sent=%d", stateOf(reg, "sn-live"), s.LiveSent(), s.Sent())
+	}
+}
+
 func TestBadRequestIsNotRetried(t *testing.T) {
 	f := newFakeAnalyzer(t, http.StatusBadRequest)
 	s, reg, ob := newSender(t, f.srv.URL, "sn-3")

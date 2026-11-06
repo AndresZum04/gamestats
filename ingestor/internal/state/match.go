@@ -189,5 +189,7 @@ func (m *MatchState) Snapshot() Snapshot {
 		ActivePlayers: active,
 		LastEventAt:   m.LastEventAt,
 		Players:       players,
+		Started:       !m.StartedAt.IsZero(),
+		Finished:      m.FinishedSeq > 0,
 	}
 }

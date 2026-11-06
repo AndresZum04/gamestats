@@ -19,6 +19,9 @@ type Server struct {
 	Rejected *ingest.RejectedWriter
 	Registry *state.Registry
 	Sender   *sender.Sender
+	// Games are the registered gameIds, listed by GET /api/v1/games even
+	// before their first match.
+	Games []string
 }
 
 // Handler returns every route wrapped in the logging middleware.
@@ -27,6 +30,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/events", &ingest.EventsHandler{Intake: s.Intake})
 	mux.HandleFunc("GET /api/v1/matches", s.listMatches)
 	mux.HandleFunc("GET /api/v1/matches/{matchId}", s.getMatch)
+	mux.HandleFunc("GET /api/v1/games", s.listGames)
 	mux.HandleFunc("GET /api/v1/rejected", s.listRejected)
 	mux.HandleFunc("GET /api/v1/stats", s.stats)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {

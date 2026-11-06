@@ -19,6 +19,8 @@ type worker struct {
 	out    chan<- model.MatchBatch // to the senders
 	match  *state.MatchState
 	deps   *deps
+	// liveCount is how many events the last LIVE copy carried.
+	liveCount int
 }
 
 func (w *worker) run() {
@@ -28,8 +30,14 @@ func (w *worker) run() {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	var grace <-chan time.Time // nil (blocks forever) until MATCH_FINISHED
+	var live <-chan time.Time  // nil when LIVE copies are off
+	if w.deps.cfg.LiveInterval > 0 {
+		liveTicker := time.NewTicker(w.deps.cfg.LiveInterval)
+		defer liveTicker.Stop()
+		live = liveTicker.C
+	}
 
-	status, shutdown := w.collect(ticker.C, &grace)
+	status, shutdown := w.collect(ticker.C, live, &grace)
 	if !shutdown {
 		w.leave()
 	}
@@ -52,7 +60,7 @@ func (w *worker) run() {
 // collect applies events until the match is ready to be sent. shutdown is
 // true when the dispatcher closed the channel because the ingestor is
 // stopping; the match is then sent as PARTIAL.
-func (w *worker) collect(tick <-chan time.Time, grace *<-chan time.Time) (status model.BatchStatus, shutdown bool) {
+func (w *worker) collect(tick, live <-chan time.Time, grace *<-chan time.Time) (status model.BatchStatus, shutdown bool) {
 	for {
 		select {
 		case ev, ok := <-w.events:
@@ -81,7 +89,26 @@ func (w *worker) collect(tick <-chan time.Time, grace *<-chan time.Time) (status
 			if time.Since(w.match.LastEventAt) >= w.deps.cfg.IdleTimeout {
 				return model.StatusPartial, false
 			}
+		case <-live:
+			w.sendLive()
 		}
+	}
+}
+
+// sendLive offers the senders a LIVE copy of the open match, only when new
+// events arrived since the last copy and MATCH_FINISHED has not (the final
+// batch is about to go). It never blocks: if every sender is busy the copy
+// is skipped and the next tick tries again, so a slow analyzer cannot stall
+// the match.
+func (w *worker) sendLive() {
+	if len(w.match.Events) == w.liveCount || w.match.FinishedSeq > 0 {
+		return
+	}
+	batch := w.match.Batch(w.deps.newBatchID(), model.StatusLive, time.Now())
+	select {
+	case w.out <- batch:
+		w.liveCount = len(w.match.Events)
+	default:
 	}
 }
 

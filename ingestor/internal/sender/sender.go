@@ -49,8 +49,9 @@ type Sender struct {
 	registry *state.Registry
 	outbox   *Outbox
 
-	sent   atomic.Int64 // batches delivered
-	failed atomic.Int64 // batches refused or parked in the outbox
+	sent     atomic.Int64 // batches delivered
+	failed   atomic.Int64 // batches refused or parked in the outbox
+	liveSent atomic.Int64 // LIVE copies delivered, not counted in sent
 }
 
 // New creates a Sender.
@@ -68,6 +69,9 @@ func (s *Sender) Sent() int64 { return s.sent.Load() }
 
 // Failed returns how many batches could not be delivered right away.
 func (s *Sender) Failed() int64 { return s.failed.Load() }
+
+// LiveSent returns how many LIVE copies were delivered.
+func (s *Sender) LiveSent() int64 { return s.liveSent.Load() }
 
 // OutboxSize returns how many batches wait in the outbox.
 func (s *Sender) OutboxSize() int { return s.outbox.Size() }
@@ -90,6 +94,10 @@ func (s *Sender) Run(ctx context.Context, batches <-chan model.MatchBatch) {
 }
 
 func (s *Sender) deliver(ctx context.Context, b model.MatchBatch) {
+	if b.Status == model.StatusLive {
+		s.deliverLive(ctx, b)
+		return
+	}
 	err := s.sendWithRetries(ctx, b)
 	switch {
 	case err == nil:
@@ -107,6 +115,24 @@ func (s *Sender) deliver(ctx context.Context, b model.MatchBatch) {
 		}
 		slog.Warn("batch parked in outbox", "matchId", b.MatchID, "err", err)
 	}
+}
+
+// deliverLive makes a single attempt. A newer copy or the final batch
+// follows, so a lost LIVE batch needs no retry and no outbox, and the match
+// status stays OPEN either way.
+func (s *Sender) deliverLive(ctx context.Context, b model.MatchBatch) {
+	if ctx.Err() != nil {
+		return // shutting down: the PARTIAL batch carries the same events
+	}
+	body, err := json.Marshal(b)
+	if err == nil {
+		err = s.post(ctx, body)
+	}
+	if err != nil {
+		slog.Warn("live batch not delivered", "matchId", b.MatchID, "events", b.EventCount, "err", err)
+		return
+	}
+	s.liveSent.Add(1)
 }
 
 func (s *Sender) markDelivered(b model.MatchBatch) {
