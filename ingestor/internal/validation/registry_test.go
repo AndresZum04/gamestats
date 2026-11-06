@@ -16,7 +16,7 @@ func TestLoadRegistryRealConfigs(t *testing.T) {
 		t.Fatalf("games = %s", got)
 	}
 	// Each game has the 10 common types plus its own.
-	for game, own := range map[string]int{"trivia": 4, "snake": 5, "blackjack": 8} {
+	for game, own := range map[string]int{"trivia": 4, "snake": 5, "blackjack": 9} {
 		g, _ := reg.Game(game)
 		if n := len(g.EventTypes()); n != 10+own {
 			t.Errorf("%s has %d types, want %d", game, n, 10+own)

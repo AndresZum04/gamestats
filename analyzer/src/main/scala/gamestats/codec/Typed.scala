@@ -190,6 +190,15 @@ object Typed:
             value <- field[Int](d, "handValue")
           yield Decision(m, p, action, round, value)
         )
+      case "AI_DECISION" =>
+        player(p =>
+          for
+            round <- field[Int](d, "round")
+            decision <- field[String](d, "decision")
+            value <- field[Int](d, "handValue")
+            fallback <- optional[Boolean](d, "fallback")
+          yield AiDecision(m, p, round, decision, value, fallback.getOrElse(false))
+        )
       case "BUST" =>
         player(p =>
           for

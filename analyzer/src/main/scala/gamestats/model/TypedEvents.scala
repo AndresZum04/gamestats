@@ -91,6 +91,15 @@ enum BlackjackEvent:
   case CardDealt(meta: Meta, playerId: String, round: Int, card: String, handValue: Int)
   case DealerCard(meta: Meta, round: Int, card: String, hidden: Boolean, dealerValue: Int)
   case Decision(meta: Meta, playerId: String, action: String, round: Int, handValue: Int)
+  // What a CPU player computed before its DECISION; fallback when the AI did not answer.
+  case AiDecision(
+      meta: Meta,
+      playerId: String,
+      round: Int,
+      decision: String,
+      handValue: Int,
+      fallback: Boolean
+  )
   case Bust(meta: Meta, playerId: String, round: Int, handValue: Int)
   case Blackjack(meta: Meta, playerId: String, round: Int)
   case HandResult(
