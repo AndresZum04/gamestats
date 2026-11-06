@@ -22,6 +22,10 @@
       "playerRequired": true,
       "data": { "round": "number", "handValue": "number" }
     },
+    "AI_DECISION": {
+      "playerRequired": true,
+      "data": { "round": "number", "decision": "string", "handValue": "number" }
+    },
     "BUST": {
       "playerRequired": true,
       "data": { "round": "number", "handValue": "number" }

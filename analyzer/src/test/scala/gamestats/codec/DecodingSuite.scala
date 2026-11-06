@@ -45,7 +45,7 @@ class DecodingSuite extends munit.FunSuite:
     decode[Event](examples.find(_.contains(s"\"$eventType\"")).get).toOption.get
 
   test("every line of examples.jsonl decodes to Event and to its typed event") {
-    assertEquals(examples.size, 29)
+    assertEquals(examples.size, 30)
     examples.foreach { line =>
       val e = decode[Event](line).fold(err => fail(s"$line: $err"), identity)
       val typed =
@@ -77,6 +77,9 @@ class DecodingSuite extends munit.FunSuite:
     Typed.toBlackjack(find("DECISION"), start) match
       case Some(BlackjackEvent.Decision(_, "p-mari", "DOUBLE", 1, 11)) => ()
       case other                                                       => fail(s"unexpected $other")
+    Typed.toBlackjack(find("AI_DECISION"), start) match
+      case Some(BlackjackEvent.AiDecision(_, "p-gabo", 2, "STAND", 13, false)) => ()
+      case other => fail(s"unexpected $other")
     Typed.toSnake(find("SNAKE_DIED"), start) match
       case Some(SnakeEvent.SnakeDied(_, "p-kev", "SELF", 11, 2)) => ()
       case other                                                 => fail(s"unexpected $other")

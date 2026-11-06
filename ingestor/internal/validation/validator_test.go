@@ -269,6 +269,27 @@ func TestValidateTolerances(t *testing.T) {
 			t.Errorf("PlayerID = %q, want nil", *got.PlayerID)
 		}
 	})
+
+	// GameConsole adds the CPU players of a blackjack table as an extra key.
+	t.Run("blackjack MATCH_STARTED with bots", func(t *testing.T) {
+		ev := baseEvent()
+		ev["gameId"] = "blackjack"
+		ev["matchId"] = "bj-lz3k9a-x81fq2"
+		ev["playerId"] = nil
+		ev["type"] = "MATCH_STARTED"
+		ev["data"] = map[string]any{
+			"players": []any{"p-andres", "cpu-1", "cpu-2"}, "mode": "TABLE",
+			"startingChips": 1000, "rounds": 10, "bots": []any{"cpu-1", "cpu-2"},
+		}
+		raw, _ := json.Marshal(ev)
+		got, verr := v.Validate(raw)
+		if verr != nil {
+			t.Fatalf("rejected: %v", verr)
+		}
+		if _, ok := got.Data["bots"]; !ok {
+			t.Error("data.bots was dropped")
+		}
+	})
 }
 
 func TestValidateKeepsNumbersExact(t *testing.T) {
