@@ -52,6 +52,8 @@ export abstract class Game<G extends GameId = GameId> {
   #lastActivity: number;
   #startedAt = 0;
   readonly #away = new Set<string>();
+  /** Players who already left the match (PLAYER_LEFT sent). */
+  readonly #left = new Set<string>();
   protected readonly clock: Clock;
   protected readonly rng: Rng;
 
@@ -131,7 +133,7 @@ export abstract class Game<G extends GameId = GameId> {
       return;
     }
     if (this.#status !== "RUNNING") return;
-    for (const p of this.humans) this.#emitCommon("PLAYER_LEFT", { reason }, p.id);
+    for (const p of this.humans) this.playerLeft(p.id, reason);
     this.finish();
   }
 
@@ -139,7 +141,7 @@ export abstract class Game<G extends GameId = GameId> {
   disconnect(): void {
     if (this.#status !== "RUNNING") return;
     for (const p of this.humans) {
-      if (this.#away.has(p.id)) continue;
+      if (this.#away.has(p.id) || this.#left.has(p.id)) continue;
       this.#away.add(p.id);
       this.#emitCommon("PLAYER_DISCONNECTED", {}, p.id);
     }
@@ -180,6 +182,13 @@ export abstract class Game<G extends GameId = GameId> {
   /** SCORE_CHANGED, the general event most games use for points. */
   protected scoreChanged(playerId: string, data: CommonData["SCORE_CHANGED"]): void {
     if (this.#status === "RUNNING") this.#emitCommon("SCORE_CHANGED", data, playerId);
+  }
+
+  /** One player leaves while the match goes on (a blackjack player out of chips). Once per player. */
+  protected playerLeft(playerId: string, reason: LeaveReason): void {
+    if (this.#status !== "RUNNING" || this.#left.has(playerId)) return;
+    this.#left.add(playerId);
+    this.#emitCommon("PLAYER_LEFT", { reason }, playerId);
   }
 
   /** Sets who plays, before start() (the seats of the start screen). */

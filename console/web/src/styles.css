@@ -277,6 +277,65 @@ table.scores tr.on-turn td {
   }
 }
 
+/* Blackjack */
+.bj-dealer,
+.bj-seat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.bj-seat.on-turn {
+  border-color: var(--focus);
+}
+.bj-seat.out {
+  opacity: 0.6;
+}
+.blackjack .cards {
+  display: flex;
+  gap: 4px;
+}
+.blackjack .card {
+  display: inline-block;
+  min-width: 32px;
+  padding: 4px 6px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+.blackjack .card.red {
+  color: var(--danger);
+}
+.blackjack .card.back {
+  color: var(--muted);
+}
+.blackjack .value {
+  font-weight: 700;
+}
+.bj-status {
+  margin-left: auto;
+  font-weight: 600;
+}
+.bj-controls input {
+  font: inherit;
+  width: 6em;
+  padding: 4px 6px;
+}
+.blackjack fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 8px 0;
+  display: flex;
+  gap: 16px;
+}
+
 @media (max-width: 480px) {
   .instances {
     grid-template-columns: 1fr;
