@@ -1,0 +1,160 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c2230;
+  --muted: #5d6677;
+  --border: #d9dde5;
+  --accent: #2f6fed;
+  --accent-text: #ffffff;
+  --danger: #c23b3b;
+  --focus: #f0a400;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151c;
+    --surface: #1b2029;
+    --text: #e7eaf0;
+    --muted: #9aa3b5;
+    --border: #2d3442;
+    --accent: #5b8cff;
+    --danger: #ff6b6b;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+nav.top {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+nav.top a {
+  color: var(--text);
+  text-decoration: none;
+}
+nav.top .brand {
+  font-weight: 700;
+  margin-right: auto;
+}
+
+button,
+a.button {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+button.danger {
+  color: var(--danger);
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+label.name input {
+  font: inherit;
+  padding: 6px 8px;
+  margin-left: 8px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 16px 0 32px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.card h2 {
+  margin-top: 0;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.instances {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+.instances.empty::before {
+  content: "Todavía no hay partidas abiertas.";
+  color: var(--muted);
+}
+.instance {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.instance.focused {
+  border-color: var(--focus);
+}
+.instance header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.instance h3 {
+  font-size: 1rem;
+  margin: 0;
+  margin-right: auto;
+}
+.instance-body {
+  padding: 12px;
+}
+.badge {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+@media (max-width: 480px) {
+  .instances {
+    grid-template-columns: 1fr;
+  }
+}

@@ -26,6 +26,13 @@ describe("app", () => {
     const res = await app.inject({ method: "GET", url: "/" });
     expect(res.statusCode).toBe(200);
     expect(res.body).toContain("GameConsole");
+    // the browser's routes get the same page; unknown API routes stay 404
+    for (const url of ["/play/trivia", "/panel"]) {
+      const page = await app.inject({ method: "GET", url });
+      expect(page.statusCode, url).toBe(200);
+      expect(page.body).toContain("GameConsole");
+    }
+    expect((await app.inject({ method: "GET", url: "/api/nothing" })).statusCode).toBe(404);
     await app.close();
   });
 });

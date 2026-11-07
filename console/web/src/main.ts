@@ -1,7 +1,6 @@
-import { CONSOLE_ID } from "@gameconsole/shared";
+import "./styles.css";
+import { ConsoleApp } from "./console/ConsoleApp.js";
+import { createRegistry } from "./games/index.js";
 
-// Entry point. The lobby and the router replace this in C11.
 const root = document.querySelector<HTMLElement>("#app");
-if (root) {
-  root.textContent = `GameConsole (${CONSOLE_ID})`;
-}
+if (root) new ConsoleApp(root, createRegistry()).start();

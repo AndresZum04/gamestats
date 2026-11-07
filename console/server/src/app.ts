@@ -32,6 +32,11 @@ export function buildApp(config: Config, options: AppOptions = {}): FastifyInsta
   // In production the server also serves the built console; in development Vite does.
   if (existsSync(config.webDist)) {
     void app.register(fastifyStatic, { root: config.webDist });
+    // /play/trivia, /panel...: the page is the same index.html; the browser's router decides.
+    app.setNotFoundHandler((req, reply) => {
+      if (req.method === "GET" && !req.url.startsWith("/api/")) return reply.sendFile("index.html");
+      return reply.code(404).send({ error: `${req.method} ${req.url} not found` });
+    });
   }
 
   return app;

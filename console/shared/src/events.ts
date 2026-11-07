@@ -39,7 +39,8 @@ export interface Placement {
 /** NO_CHIPS is the value GameStats uses for a blackjack player out of chips. */
 export type LeaveReason = "CLOSED_TAB" | "QUIT" | "IDLE" | "NO_CHIPS";
 
-interface CommonData {
+/** `data` of the general events every game shares. */
+export interface CommonData {
   MATCH_FINISHED: { durationMs: number; results: Placement[]; finalScore?: number };
   PLAYER_JOINED: { teamId?: string };
   PLAYER_LEFT: { reason: LeaveReason };
@@ -134,6 +135,15 @@ export interface EventDataMap {
 
 export type EventType<G extends GameId> = keyof EventDataMap[G] & string;
 export type EventData<G extends GameId, T extends EventType<G>> = EventDataMap[G][T];
+
+export type CommonEventType = keyof CommonData;
+
+/** `data` of a game's MATCH_STARTED (each game adds its own keys). */
+export type MatchStartedData<G extends GameId> = EventDataMap[G] extends {
+  MATCH_STARTED: infer D;
+}
+  ? D
+  : never;
 
 /** One event with the GameStats envelope. Keys are in the order GameStats writes them. */
 export interface GameEvent<G extends GameId = GameId, T extends EventType<G> = EventType<G>> {
