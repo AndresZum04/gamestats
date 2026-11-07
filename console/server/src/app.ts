@@ -9,6 +9,9 @@ import type { EventSink } from "./events/EventSink.js";
 import { registerEvents } from "./events/EventsController.js";
 import { FileSink } from "./events/FileSink.js";
 import { HttpSink } from "./events/HttpSink.js";
+import { GameStatsClient } from "./stats/GameStatsClient.js";
+import { registerStats } from "./stats/StatsController.js";
+import { StatsHub } from "./stats/StatsHub.js";
 
 export interface AppOptions {
   /** JSON logs with pino (Fastify's logger); off in tests. */
@@ -17,6 +20,10 @@ export interface AppOptions {
   sink?: EventSink;
   /** Replaces the client of PROLOG_URL (tests). */
   prolog?: PrologClient;
+  /** Replaces the GameStats client (tests). */
+  gamestats?: GameStatsClient;
+  /** Time between rounds of queries to GameStats; 2 s by default. */
+  statsIntervalMs?: number;
 }
 
 /** Builds the server without listening, so tests can call it with inject(). */
@@ -33,6 +40,13 @@ export function buildApp(config: Config, options: AppOptions = {}): FastifyInsta
   app.get("/health", async () => ({ status: "ok", service: CONSOLE_ID, sink: sink.kind }));
   registerEvents(app, sink);
   registerAi(app, options.prolog ?? new PrologClient(config.prologUrl));
+  const gamestats =
+    options.gamestats ?? new GameStatsClient(config.ingestorUrl, config.analyzerUrl);
+  const hub = new StatsHub(gamestats, {
+    ...(options.statsIntervalMs === undefined ? {} : { intervalMs: options.statsIntervalMs }),
+    log: app.log,
+  });
+  registerStats(app, hub, gamestats);
 
   // In production the server also serves the built console; in development Vite does.
   if (existsSync(config.webDist)) {
