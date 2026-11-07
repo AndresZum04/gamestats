@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml)
 
+> **Proyecto 2 (GameConsole):** está en la carpeta [`console/`](console/). Se instala con `console/install.sh` en Linux o macOS, o con `console\install.ps1` en Windows. Su documentación está en [`console/README.md`](console/README.md). Este README describe GameStats (Proyecto 1), que la consola usa para las estadísticas.
+
 GameStats recibe eventos de partidas de videojuegos, los organiza en Go y los analiza en Scala. Calcula estadísticas por jugador, por partida y por juego, detecta patrones como remontadas, rachas o un all-in después de perder, y muestra todo en un tablero web. Trae tres juegos: trivia, snake y blackjack.
 
 Proyecto 1 del curso Lenguajes de Programación, Instituto Tecnológico de Costa Rica.
