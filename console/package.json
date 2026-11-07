@@ -18,7 +18,9 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "dev": "npm run build -w shared && node scripts/dev.mjs"
+    "dev": "npm run build -w shared && node scripts/dev.mjs",
+    "e2e": "npm run e2e -w e2e",
+    "demo": "bash scripts/demo.sh"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

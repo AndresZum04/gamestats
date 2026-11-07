@@ -8,7 +8,7 @@ const MATCH_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 /**
  * GET /api/stats/stream: Server-Sent Events, one `data:` line with the whole
- * snapshot every 2 s. GET /api/stats: the last snapshot, once (tests, scripts).
+ * snapshot every 2 s. GET /api/stats: a current snapshot, once (tests, scripts).
  * GET /api/stats/match/:matchId: the detail of one match from the analyzer.
  */
 export function registerStats(app: FastifyInstance, hub: StatsHub, client: GameStatsClient): void {
@@ -34,7 +34,10 @@ export function registerStats(app: FastifyInstance, hub: StatsHub, client: GameS
     });
   });
 
-  app.get("/api/stats", async () => hub.latest ?? (await hub.poll()));
+  // With panels connected the last snapshot is at most 2 s old; without them, ask now.
+  app.get("/api/stats", async () =>
+    hub.listeners > 0 && hub.latest ? hub.latest : await hub.poll(),
+  );
 
   app.get<{ Params: { matchId: string } }>("/api/stats/match/:matchId", async (req, reply) => {
     const { matchId } = req.params;

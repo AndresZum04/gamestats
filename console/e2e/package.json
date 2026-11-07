@@ -2,6 +2,14 @@
   "name": "@gameconsole/e2e",
   "version": "0.1.0",
   "private": true,
-  "description": "End-to-end tests with Playwright (added in C20)",
-  "type": "module"
+  "description": "End-to-end tests with Playwright against the running system",
+  "type": "module",
+  "dependencies": {
+    "@playwright/test": "1.64.1",
+    "@gameconsole/shared": "0.1.0"
+  },
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc -p tsconfig.json"
+  }
 }

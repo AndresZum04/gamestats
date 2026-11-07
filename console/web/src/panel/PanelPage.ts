@@ -25,14 +25,25 @@ import type {
 
 type Cell = Node | string;
 
-/** A table from rows already computed by GameStats. */
-function table(headers: string[], rows: Cell[][], empty: string): HTMLElement {
+/** A table from rows already computed by GameStats; `key` names each row (data-key). */
+function table(
+  headers: string[],
+  rows: Cell[][],
+  empty: string,
+  key?: (index: number) => string,
+): HTMLElement {
   if (rows.length === 0) return h("p", { class: "muted" }, empty);
   return h(
     "table",
     { class: "scores" },
     h("thead", {}, h("tr", {}, ...headers.map((t) => h("th", {}, t)))),
-    h("tbody", {}, ...rows.map((r) => h("tr", {}, ...r.map((c) => h("td", {}, c))))),
+    h(
+      "tbody",
+      {},
+      ...rows.map((r, i) =>
+        h("tr", key ? { "data-key": key(i) } : {}, ...r.map((c) => h("td", {}, c))),
+      ),
+    ),
   );
 }
 
@@ -155,6 +166,7 @@ export class PanelPage {
         count(g.events),
       ]),
       "El ingestor todavía no vio partidas.",
+      (i) => `instances-${games?.[i]?.gameId ?? i}`,
     );
     const rejectedByCode = Object.entries(ingest?.rejectedByCode ?? {});
     const patterns = table(
@@ -292,6 +304,7 @@ export class PanelPage {
         count(m.patterns),
       ]),
       empty,
+      (i) => `match-${matches[i]?.matchId ?? i}`,
     );
   }
 

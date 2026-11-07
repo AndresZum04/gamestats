@@ -36,6 +36,12 @@ function autoplayFrom(search: string): { seed: number } | null {
   return { seed: Number.isFinite(seed) ? seed : 1 };
 }
 
+/** ?open=trivia,snake,blackjack: games to open at once on the lobby (demo and tests). */
+function gamesToOpen(search: string): string[] {
+  const list = new URLSearchParams(search).get("open");
+  return list ? list.split(",").slice(0, 12) : [];
+}
+
 /**
  * Wires the console of one tab: events go out through one EventPublisher per
  * match, orphan outboxes are recovered, and the tab's visibility, closing and
@@ -111,6 +117,7 @@ export class ConsoleApp {
     switch (route.name) {
       case "lobby":
         this.#lobby(main);
+        this.#openFromUrl();
         break;
       case "play":
         this.#play(main, route.gameId);
@@ -186,6 +193,14 @@ export class ConsoleApp {
     this.#mountInstances(main);
     if (!this.#manager.instances.some((i) => i.definition.id === gameId)) this.#open(gameId);
   }
+
+  /** Opens the games of ?open= once, the first time the lobby is shown. */
+  #openFromUrl(): void {
+    if (this.#openedFromUrl) return;
+    this.#openedFromUrl = true;
+    for (const id of gamesToOpen(location.search)) if (this.#registry.has(id)) this.#open(id);
+  }
+  #openedFromUrl = false;
 
   #open(gameId: GameId): void {
     this.#manager.open(gameId);
