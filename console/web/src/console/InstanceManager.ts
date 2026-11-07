@@ -57,7 +57,7 @@ export class InstanceManager {
     return this.#instances.find((i) => i.id === this.#focused);
   }
 
-  /** Creates a match of the game, starts it and gives it the keyboard. */
+  /** Creates a match of the game, starts it (unless it shows a start screen) and gives it the keyboard. */
   open(gameId: GameId): Instance {
     const definition = this.#opt.registry.get(gameId);
     if (definition === undefined) throw new Error(`${gameId} is not registered`);
@@ -71,7 +71,7 @@ export class InstanceManager {
     });
     const instance: Instance = { id: this.#nextId++, definition, game };
     this.#instances.push(instance);
-    game.start();
+    if (!game.awaitingSetup) game.start();
     this.focus(instance.id);
     return instance;
   }

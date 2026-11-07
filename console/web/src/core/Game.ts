@@ -46,10 +46,11 @@ export abstract class Game<G extends GameId = GameId> {
   readonly #context: MatchContext<G>;
   readonly #factory: EventFactory<G>;
   readonly #outlet: EventOutlet;
-  readonly #players: readonly Player[];
+  #players: readonly Player[];
   readonly #listeners = new Set<() => void>();
   #status: GameStatus = "READY";
   #lastActivity: number;
+  #startedAt = 0;
   readonly #away = new Set<string>();
   protected readonly clock: Clock;
   protected readonly rng: Rng;
@@ -83,12 +84,21 @@ export abstract class Game<G extends GameId = GameId> {
   get idleMs(): number {
     return this.clock.now() - this.#lastActivity;
   }
+  /**
+   * True while the game waits for its seats to be chosen (the trivia or
+   * blackjack start screen). The InstanceManager starts it only when false;
+   * otherwise the view calls start() once the seats are set.
+   */
+  get awaitingSetup(): boolean {
+    return false;
+  }
 
   /** Emits MATCH_STARTED and a PLAYER_JOINED per player, then lets the game begin. */
   start(): void {
     if (this.#status !== "READY") return;
     this.#status = "RUNNING";
-    this.#lastActivity = this.clock.now();
+    this.#startedAt = this.clock.now();
+    this.#lastActivity = this.#startedAt;
     this.#publish(this.#factory.create("MATCH_STARTED" as EventType<G>, this.startData() as never));
     for (const p of this.#players) this.#emitCommon("PLAYER_JOINED", {}, p.id);
     this.onStart();
@@ -101,7 +111,7 @@ export abstract class Game<G extends GameId = GameId> {
     this.#status = "FINISHED";
     this.onFinish();
     this.#emitCommon("MATCH_FINISHED", {
-      durationMs: this.#context.elapsedMs(),
+      durationMs: this.clock.now() - this.#startedAt,
       results: this.buildResults(),
       ...this.finishData(),
     });
@@ -170,6 +180,12 @@ export abstract class Game<G extends GameId = GameId> {
   /** SCORE_CHANGED, the general event most games use for points. */
   protected scoreChanged(playerId: string, data: CommonData["SCORE_CHANGED"]): void {
     if (this.#status === "RUNNING") this.#emitCommon("SCORE_CHANGED", data, playerId);
+  }
+
+  /** Sets who plays, before start() (the seats of the start screen). */
+  protected setPlayers(players: readonly Player[]): void {
+    if (this.#status !== "READY") throw new Error("the players are set before the start");
+    this.#players = [...players];
   }
 
   /** A person acted: resets the inactivity clock. */

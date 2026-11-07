@@ -1,6 +1,7 @@
 import { GameRegistry } from "../console/GameRegistry.js";
+import { triviaDefinition } from "./trivia/index.js";
 
-/** The games of the console. Trivia (C10), Snake (C11) and Blackjack (C12) register here. */
+/** The games of the console. Adding a game is registering it here. */
 export function createRegistry(): GameRegistry {
-  return new GameRegistry();
+  return new GameRegistry().register(triviaDefinition);
 }
