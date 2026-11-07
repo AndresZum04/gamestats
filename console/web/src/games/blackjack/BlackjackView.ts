@@ -4,6 +4,7 @@ import type { GameView } from "../../console/GameRegistry.js";
 import { MAX_CPUS, MIN_CPUS, type BlackjackGame } from "./BlackjackGame.js";
 import type { Card } from "./Card.js";
 import type { Hand } from "./Hand.js";
+import { PrologDecision } from "./PrologDecision.js";
 import type { Seat } from "./Seat.js";
 
 const KEYS: Readonly<Record<string, BlackjackAction>> = { h: "HIT", s: "STAND", d: "DOUBLE" };
@@ -27,6 +28,8 @@ export class BlackjackView implements GameView {
   #el: HTMLElement | null = null;
   #cpus = 2;
   #betDraft = 50;
+  /** The "Por qué jugó así" panel stays open between redraws. */
+  #whyOpen = false;
 
   constructor(game: BlackjackGame) {
     this.#game = game;
@@ -118,6 +121,8 @@ export class BlackjackView implements GameView {
       ),
       h("div", { class: "bj-seats" }, ...table.seats.map((s) => this.#seat(s))),
       this.#controls(),
+      this.#fallbackNotice(),
+      this.#why(table.seats),
     );
   }
 
@@ -192,6 +197,75 @@ export class BlackjackView implements GameView {
         "Doblar (D)",
       ),
     );
+  }
+
+  /** Visible when a CPU's last move was the fallback because Prolog did not answer. */
+  #fallbackNotice(): HTMLElement | null {
+    const table = this.#game.table;
+    const names = (table?.seats ?? [])
+      .filter((s) => s.strategy instanceof PrologDecision && s.strategy.lastDecision?.fallback)
+      .map((s) => s.player.name);
+    if (names.length === 0) return null;
+    return h(
+      "p",
+      { class: "warning", role: "status" },
+      `La IA de Prolog no respondió: ${names.join(", ")} se plantó como respaldo.`,
+    );
+  }
+
+  /** The three expected values of each CPU's last decision, and why it bet what it bet. */
+  #why(seats: readonly Seat[]): HTMLElement | null {
+    const cpus = seats.filter((s) => s.strategy instanceof PrologDecision);
+    if (cpus.length === 0) return null;
+    const ev = (v: number | undefined) => (v === undefined ? "—" : v.toFixed(2));
+    const rows = cpus.map((seat) => {
+      const strategy = seat.strategy as PrologDecision;
+      const d = strategy.lastDecision;
+      const bet = strategy.lastBet;
+      return h(
+        "tr",
+        {},
+        h("td", {}, seat.player.name),
+        h("td", {}, d ? `${d.action} con ${d.handValue} contra ${d.dealerUpcard}` : "—"),
+        h("td", { class: "num" }, ev(d?.evHit)),
+        h("td", { class: "num" }, ev(d?.evStand)),
+        h("td", { class: "num" }, ev(d?.evDouble)),
+        h(
+          "td",
+          { class: "muted" },
+          [d?.reason, bet ? `Apuesta ${bet.amount}: ${bet.reason}` : ""].filter(Boolean).join(". "),
+        ),
+      );
+    });
+    const details = h(
+      "details",
+      {
+        class: "bj-why",
+        open: this.#whyOpen,
+        ontoggle: (e: Event) => (this.#whyOpen = (e.target as HTMLDetailsElement).open),
+      },
+      h("summary", {}, "Por qué jugó así"),
+      h(
+        "table",
+        { class: "scores" },
+        h(
+          "thead",
+          {},
+          h(
+            "tr",
+            {},
+            h("th", {}, "CPU"),
+            h("th", {}, "Última jugada"),
+            h("th", { class: "num" }, "EV pedir"),
+            h("th", { class: "num" }, "EV plantarse"),
+            h("th", { class: "num" }, "EV doblar"),
+            h("th", {}, "Explicación"),
+          ),
+        ),
+        h("tbody", {}, ...rows),
+      ),
+    );
+    return details;
   }
 
   #final(): HTMLElement {

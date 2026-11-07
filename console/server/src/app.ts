@@ -2,6 +2,8 @@ import { existsSync } from "node:fs";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import { CONSOLE_ID } from "@gameconsole/shared";
+import { registerAi } from "./ai/AiController.js";
+import { PrologClient } from "./ai/PrologClient.js";
 import type { Config } from "./config.js";
 import type { EventSink } from "./events/EventSink.js";
 import { registerEvents } from "./events/EventsController.js";
@@ -13,6 +15,8 @@ export interface AppOptions {
   logger?: boolean;
   /** Replaces the sink chosen by EVENT_SINK (tests). */
   sink?: EventSink;
+  /** Replaces the client of PROLOG_URL (tests). */
+  prolog?: PrologClient;
 }
 
 /** Builds the server without listening, so tests can call it with inject(). */
@@ -28,6 +32,7 @@ export function buildApp(config: Config, options: AppOptions = {}): FastifyInsta
 
   app.get("/health", async () => ({ status: "ok", service: CONSOLE_ID, sink: sink.kind }));
   registerEvents(app, sink);
+  registerAi(app, options.prolog ?? new PrologClient(config.prologUrl));
 
   // In production the server also serves the built console; in development Vite does.
   if (existsSync(config.webDist)) {

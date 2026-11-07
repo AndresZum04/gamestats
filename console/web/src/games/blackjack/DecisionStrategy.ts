@@ -1,6 +1,7 @@
 import type { BlackjackAction } from "@gameconsole/shared";
 import type { Card } from "./Card.js";
 import type { Hand } from "./Hand.js";
+import type { AiDecisionInfo } from "./PrologDecision.js";
 import type { ShoeComposition } from "./Shoe.js";
 
 export interface BetContext {
@@ -19,6 +20,12 @@ export interface DecisionContext {
   shoe: ShoeComposition;
 }
 
+/** A move, and what the AI computed when an AI chose it (for AI_DECISION). */
+export interface Decision {
+  action: BlackjackAction;
+  ai?: AiDecisionInfo;
+}
+
 /**
  * Who decides for a seat. Both methods are asynchronous because a person
  * answers with buttons and the Prolog AI (C14) answers over the network; the
@@ -27,7 +34,7 @@ export interface DecisionContext {
 export interface DecisionStrategy {
   /** Bet of the round, between minBet and maxBet; the table adjusts it to the rules. */
   bet(context: BetContext): Promise<number>;
-  decide(context: DecisionContext): Promise<BlackjackAction>;
+  decide(context: DecisionContext): Promise<Decision>;
   /** True if a person decides (the view shows buttons for this seat). */
   readonly human: boolean;
 }
@@ -49,8 +56,8 @@ export class HumanDecision implements DecisionStrategy {
     return new Promise((resolve) => (this.#pendingBet = resolve));
   }
 
-  decide(): Promise<BlackjackAction> {
-    return new Promise((resolve) => (this.#pendingAction = resolve));
+  decide(): Promise<Decision> {
+    return new Promise((resolve) => (this.#pendingAction = (action) => resolve({ action })));
   }
 
   submitBet(amount: number): boolean {
@@ -71,8 +78,9 @@ export class HumanDecision implements DecisionStrategy {
 }
 
 /**
- * Temporary CPU strategy of C12, a simplified basic strategy; C14 replaces it
- * with the Prolog AI. Bets the minimum twice (20). Doubles 10 or 11 against a
+ * A simplified basic strategy, without AI: the CPU of the first version (C12)
+ * and the bot that plays the person's seat in autoplay mode. The CPU now use
+ * PrologDecision. Bets the minimum twice (20). Doubles 10 or 11 against a
  * dealer card of 2 to 9; with a hard hand hits under 12, hits 12 to 16 against
  * 7 or more, and stands otherwise; with a soft hand hits up to 17.
  */
@@ -83,8 +91,8 @@ export class BasicStrategy implements DecisionStrategy {
     return Promise.resolve(minBet * 2);
   }
 
-  decide(context: DecisionContext): Promise<BlackjackAction> {
-    return Promise.resolve(BasicStrategy.choose(context));
+  decide(context: DecisionContext): Promise<Decision> {
+    return Promise.resolve({ action: BasicStrategy.choose(context) });
   }
 
   static choose({ hand, dealerUpcard, canDouble }: DecisionContext): BlackjackAction {

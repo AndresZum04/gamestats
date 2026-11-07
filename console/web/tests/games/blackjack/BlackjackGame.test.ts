@@ -202,7 +202,7 @@ describe("BlackjackGame", () => {
     const reckless: DecisionStrategy = {
       human: false,
       bet: () => Promise.resolve(200),
-      decide: () => Promise.resolve("HIT"),
+      decide: () => Promise.resolve({ action: "HIT" as const }),
     };
     const { game, outlet } = blackjack({ autoplay: true, cpuStrategy: () => reckless });
     game.start();

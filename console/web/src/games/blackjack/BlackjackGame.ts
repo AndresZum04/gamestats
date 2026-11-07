@@ -1,8 +1,11 @@
 import type { BlackjackAction, MatchStartedData, Placement } from "@gameconsole/shared";
+import { systemClock } from "../../core/Clock.js";
 import { Game, type GameDeps } from "../../core/Game.js";
 import { BotPlayer, type HumanPlayer, type Player } from "../../core/Player.js";
 import { BlackjackTable, MAX_BET, MIN_BET, ROUNDS, STARTING_CHIPS } from "./BlackjackTable.js";
+import type { AiClient } from "./AiClient.js";
 import { BasicStrategy, HumanDecision, type DecisionStrategy } from "./DecisionStrategy.js";
+import { PrologBlackjackPlayer } from "./PrologDecision.js";
 import { Seat } from "./Seat.js";
 
 export const MIN_CPUS = 1;
@@ -20,7 +23,9 @@ export class BlackjackBot extends BotPlayer {
 export interface BlackjackOptions {
   /** ?autoplay=1: the person's seat plays alone, with 3 CPU and no start screen. */
   autoplay?: boolean;
-  /** Who decides for each CPU. C12 uses BasicStrategy; C14 passes the Prolog AI. */
+  /** The Prolog AI: with it the CPU are PrologBlackjackPlayer; without it they use cpuStrategy. */
+  ai?: AiClient;
+  /** Who decides for each CPU when there is no AI (tests); BasicStrategy by default. */
   cpuStrategy?: (bot: Player) => DecisionStrategy;
   /** Visual pause before each CPU decision (400 to 800 ms in the plan). */
   thinkMs?: readonly [number, number];
@@ -48,12 +53,14 @@ export interface Standing {
  * for a seat left with less than the minimum bet. The table goes on without it.
  *
  * Seats decide through a DecisionStrategy, which may take time (a person, or
- * Prolog in C14). The round awaits it; other instances keep running.
+ * Prolog). The round awaits it; other instances keep running. Each move of a
+ * Prolog CPU emits AI_DECISION (what the AI computed) before its DECISION.
  */
 export class BlackjackGame extends Game<"blackjack"> {
   readonly #host: HumanPlayer;
   readonly #autoplay: boolean;
   readonly #cpuStrategy: (bot: Player) => DecisionStrategy;
+  readonly #cpu: (n: number) => BotPlayer;
   readonly #thinkMs: readonly [number, number];
   readonly #dealerPauseMs: number;
   readonly #resultsPauseMs: number;
@@ -66,8 +73,13 @@ export class BlackjackGame extends Game<"blackjack"> {
 
   constructor(host: HumanPlayer, deps: GameDeps, options: BlackjackOptions = {}) {
     const autoplay = options.autoplay ?? false;
-    const bots = autoplay ? [1, 2, 3].map((n) => BlackjackBot.numbered(n)) : [];
+    const ai = options.ai;
+    const clock = deps.clock ?? systemClock;
+    const cpu = (n: number): BotPlayer =>
+      ai ? new PrologBlackjackPlayer(n, ai, clock) : BlackjackBot.numbered(n);
+    const bots = autoplay ? [1, 2, 3].map(cpu) : [];
     super("blackjack", [host, ...bots], deps);
+    this.#cpu = cpu;
     this.#host = host;
     this.#autoplay = autoplay;
     this.#cpuStrategy = options.cpuStrategy ?? (() => new BasicStrategy());
@@ -82,7 +94,7 @@ export class BlackjackGame extends Game<"blackjack"> {
     if (!Number.isInteger(cpus) || cpus < MIN_CPUS || cpus > MAX_CPUS) {
       throw new Error(`from ${MIN_CPUS} to ${MAX_CPUS} CPU`);
     }
-    const bots = Array.from({ length: cpus }, (_, i) => BlackjackBot.numbered(i + 1));
+    const bots = Array.from({ length: cpus }, (_, i) => this.#cpu(i + 1));
     this.setPlayers([this.#host, ...bots]);
     this.#needsSetup = false;
     this.start();
@@ -181,6 +193,7 @@ export class BlackjackGame extends Game<"blackjack"> {
   // ---- The rounds ---------------------------------------------------------
 
   #strategyFor(player: Player): DecisionStrategy {
+    if (player instanceof PrologBlackjackPlayer) return player.strategy;
     if (player.isBot) return this.#cpuStrategy(player);
     return this.#autoplay ? new BasicStrategy() : new HumanDecision();
   }
@@ -295,21 +308,39 @@ export class BlackjackGame extends Game<"blackjack"> {
         seat.setState("STOOD"); // nothing to decide with 21
         break;
       }
-      if (!seat.strategy.human) {
-        const [min, max] = this.#thinkMs;
-        await this.#sleep(this.rng.int(min, max));
-        if (!this.#alive()) return;
-      }
-      let action = await seat.strategy.decide({
+      const asking = seat.strategy.decide({
         round,
         hand: seat.hand,
         dealerUpcard: upcard,
         canDouble: seat.canDouble,
         shoe: table.shoe.composition(),
       });
+      // A CPU shows its move after 400 to 800 ms; the question to Prolog runs meanwhile.
+      const pause = seat.strategy.human ? null : this.#sleep(this.rng.int(...this.#thinkMs));
+      const [decision] = await Promise.all([asking, pause]);
       if (!this.#alive()) return;
       this.#acted(seat);
+      let action = decision.action;
       if (action === "DOUBLE" && !seat.canDouble) action = "HIT";
+      if (decision.ai) {
+        // What Prolog computed, then the normal DECISION (so B1 to B5 do not change).
+        const { evHit, evStand, evDouble, elapsedMs, fallback } = decision.ai;
+        this.emit(
+          "AI_DECISION",
+          {
+            round,
+            decision: action,
+            handValue: seat.hand.value,
+            dealerUpcard: upcard.code,
+            ...(evHit === undefined ? {} : { evHit }),
+            ...(evStand === undefined ? {} : { evStand }),
+            ...(evDouble === undefined ? {} : { evDouble }),
+            elapsedMs,
+            fallback,
+          },
+          { playerId },
+        );
+      }
       this.emit("DECISION", { round, handValue: seat.hand.value }, { playerId, action });
 
       if (action === "STAND") {

@@ -336,6 +336,21 @@ table.scores tr.on-turn td {
   gap: 16px;
 }
 
+.warning {
+  color: var(--danger);
+  font-weight: 600;
+}
+.bj-why {
+  margin-top: 12px;
+}
+.bj-why summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.bj-why table {
+  font-size: 0.9rem;
+}
+
 @media (max-width: 480px) {
   .instances {
     grid-template-columns: 1fr;
