@@ -225,6 +225,58 @@ table.scores tr.on-turn td {
   font-weight: 700;
 }
 
+/* Snake */
+.snake-hud {
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.snake-stage {
+  position: relative;
+  max-width: 400px;
+}
+.snake-board {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.snake-message {
+  position: absolute;
+  inset: auto 0 8px;
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+}
+.snake-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-areas: ". up ." "left down right";
+  gap: 4px;
+  margin-top: 8px;
+}
+.snake-pad button {
+  height: 40px;
+  padding: 0;
+  touch-action: manipulation;
+}
+.snake-pad .pad-up {
+  grid-area: up;
+}
+.snake-pad .pad-left {
+  grid-area: left;
+}
+.snake-pad .pad-down {
+  grid-area: down;
+}
+.snake-pad .pad-right {
+  grid-area: right;
+}
+@media (hover: hover) and (pointer: fine) {
+  .snake-pad {
+    display: none;
+  }
+}
+
 @media (max-width: 480px) {
   .instances {
     grid-template-columns: 1fr;
