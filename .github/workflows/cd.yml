@@ -2,7 +2,8 @@
 # publica en GitHub Container Registry las imágenes de GameStats (analyzer,
 # ingestor, simulator) y de la consola (gameconsole-console y
 # gameconsole-prolog) y, si la VM de Azure está configurada (secreto
-# DEPLOY_HOST), actualiza GameStats por SSH.
+# DEPLOY_HOST), actualiza GameStats por SSH. Si el commit solo cambió
+# documentación, no hace nada.
 name: CD
 
 on:
@@ -22,10 +23,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # workflow_run no acepta paths-ignore, así que se revisa a mano qué cambió el
+  # commit (contra su primer padre: en un merge, todo el PR). Si solo cambió
+  # documentación (*.md o console/docs/) no se publica ni se despliega nada.
+  changes:
+    name: Revisar si cambió algo más que documentación
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+
+      - name: Archivos cambiados
+        id: diff
+        run: |
+          # Un tag siempre publica.
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          files="$(git diff --name-only HEAD^1 HEAD)"
+          echo "$files"
+          code="$(printf '%s\n' "$files" | grep -v -E '(\.md$|^console/docs/)' | grep -q . && echo true || echo false)"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          [ "$code" = "true" ] || echo "Solo cambió documentación: no se publican imágenes ni se despliega."
+
   images:
     name: Publicar imágenes en GHCR
-    # Desde workflow_run solo si CI salió bien; un tag siempre publica.
-    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
