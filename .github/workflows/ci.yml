@@ -1,6 +1,6 @@
 # Integración continua: en cada push y pull request compila y prueba Go,
-# Scala y la consola (TypeScript) por separado, y después levanta todo con
-# Docker y corre el simulador de punta a punta.
+# Scala, la consola (TypeScript) y la IA en Prolog por separado, y después
+# levanta todo con Docker y corre el simulador de punta a punta.
 name: CI
 
 on:
@@ -112,6 +112,19 @@ jobs:
 
       - name: Pruebas
         run: npm test
+
+  prolog:
+    name: Prolog (IA de Blackjack)
+    runs-on: ubuntu-latest
+    container: swipl:10.0.2
+    defaults:
+      run:
+        working-directory: console/prolog
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pruebas plunit
+        run: swipl -g run_tests -t halt tests/blackjack_ai.plt
 
   integration:
     name: Integración con Docker
