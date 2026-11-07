@@ -78,6 +78,17 @@ export class InstanceArea {
         {},
         h("h3", {}, `${definition.title} · `, h("code", {}, game.matchId)),
         status,
+        // A new tab, so the match keeps running on screen while the panel is open.
+        h(
+          "a",
+          {
+            href: `/panel?game=${definition.id}`,
+            target: "_blank",
+            rel: "noopener",
+            class: "button",
+          },
+          "Estadísticas",
+        ),
         h("button", { type: "button", onclick: () => this.#manager.focus(instance.id) }, "Enfocar"),
         h(
           "button",

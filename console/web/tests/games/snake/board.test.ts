@@ -5,6 +5,7 @@ import { Grid } from "../../../src/games/snake/Grid.js";
 import { LevelPolicy } from "../../../src/games/snake/LevelPolicy.js";
 import { keyOf, point } from "../../../src/games/snake/Point.js";
 import { Snake } from "../../../src/games/snake/Snake.js";
+import { SnakeBot } from "../../../src/games/snake/SnakeBot.js";
 
 const grid = new Grid();
 const detector = new CollisionDetector(grid);
@@ -115,5 +116,22 @@ describe("Grid", () => {
     expect(small.randomFree(new Rng(1), (p) => p.x === 0)).toEqual(point(1, 0));
     expect(small.randomFree(new Rng(1), () => true)).toBeNull();
     expect(grid.label).toBe("20x20");
+  });
+});
+
+describe("SnakeBot", () => {
+  it("after 120 moves without eating it stops chasing and goes straight", () => {
+    const bot = new SnakeBot(new Rng(1));
+    const snake = new Snake(point(10, 10), "RIGHT");
+    // A target it never reaches: the bot keeps choosing a safe direction.
+    const view = { snake, target: point(0, 0), obstacles: none, detector };
+    for (let i = 0; i < 119; i++) bot.choose(view);
+    expect(bot.careless).toBe(false);
+    bot.choose(view);
+    expect(bot.careless).toBe(true);
+    expect(bot.choose(view)).toBe(snake.nextDirection);
+    bot.ate(); // eating resets the count (the fruit budget is still there)
+    bot.newLife();
+    expect(bot.careless).toBe(false);
   });
 });

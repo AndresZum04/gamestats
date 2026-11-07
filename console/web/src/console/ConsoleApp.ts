@@ -1,5 +1,6 @@
 import { CONSOLE_ID, type GameId } from "@gameconsole/shared";
 import { HumanPlayer } from "../core/Player.js";
+import { PanelPage } from "../panel/PanelPage.js";
 import { EventPublisher } from "../events/EventPublisher.js";
 import { Outbox } from "../events/Outbox.js";
 import { OutboxRecovery } from "../events/OutboxRecovery.js";
@@ -114,13 +115,12 @@ export class ConsoleApp {
       case "play":
         this.#play(main, route.gameId);
         break;
-      case "panel":
-        main.append(
-          h("h1", {}, "Panel"),
-          h("p", {}, "Las estadísticas de GameStats llegan en C15."),
-        );
-        this.#page = null;
+      case "panel": {
+        const panel = new PanelPage(main, new URLSearchParams(location.search).get("game"));
+        panel.mount();
+        this.#page = panel;
         break;
+      }
       case "notFound":
         main.append(
           h("h1", {}, "Página no encontrada"),

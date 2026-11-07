@@ -14,12 +14,16 @@ export interface BotView {
  * The simple player of the autoplay mode. It goes towards the fruit by a safe
  * cell; on a tie it picks at random. After eating some fruits in a life it gets
  * "careless" and goes straight on until it crashes, so an automatic match
- * always ends and loses its three lives in a reasonable time.
+ * always ends and loses its three lives in a reasonable time. It also gets
+ * careless after 120 moves without eating (going round an obstacle that
+ * hides the fruit, for example), so it can never loop forever.
  */
 export class SnakeBot {
   readonly #rng: Rng;
   #budget = 0;
   #eaten = 0;
+  #hungry = 0;
+  static readonly MAX_MOVES_WITHOUT_FOOD = 120;
 
   constructor(rng: Rng) {
     this.#rng = rng;
@@ -30,19 +34,22 @@ export class SnakeBot {
   newLife(): void {
     this.#budget = this.#rng.int(4, 9);
     this.#eaten = 0;
+    this.#hungry = 0;
   }
 
   ate(): void {
     this.#eaten += 1;
+    this.#hungry = 0;
   }
 
   get careless(): boolean {
-    return this.#eaten >= this.#budget;
+    return this.#eaten >= this.#budget || this.#hungry >= SnakeBot.MAX_MOVES_WITHOUT_FOOD;
   }
 
   choose(view: BotView): Direction {
     const { snake, target, obstacles, detector } = view;
     const current = snake.nextDirection;
+    this.#hungry += 1;
     if (this.careless) return current;
     const safe = DIRECTIONS.filter(
       (d) =>

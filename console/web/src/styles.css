@@ -351,6 +351,71 @@ table.scores tr.on-turn td {
   font-size: 0.9rem;
 }
 
+/* Panel */
+.panel-status {
+  color: var(--muted);
+}
+.zone {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 16px 16px;
+  margin-bottom: 24px;
+}
+.zone .cards {
+  margin: 16px 0 0;
+}
+.card h3 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding-top: 16px;
+}
+.tab.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+dl.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+dl.facts dt {
+  color: var(--muted);
+}
+dl.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.chart {
+  margin-top: 16px;
+}
+.chart-box {
+  position: relative;
+  height: 260px;
+}
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  font-family: ui-monospace, monospace;
+}
+.detail .players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.detail h4 {
+  margin: 0 0 6px;
+}
+
 @media (max-width: 480px) {
   .instances {
     grid-template-columns: 1fr;

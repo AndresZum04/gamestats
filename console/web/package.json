@@ -11,7 +11,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@gameconsole/shared": "0.1.0"
+    "@gameconsole/shared": "0.1.0",
+    "chart.js": "4.5.1"
   },
   "devDependencies": {
     "ajv": "8.20.0",

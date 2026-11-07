@@ -130,6 +130,15 @@ describe("SnakeGame", () => {
     }
   });
 
+  it("every automatic match ends: 40 seeds, all finished in a few minutes", () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const { game } = snake({ autoplay: true }, seed);
+      game.start();
+      vi.advanceTimersByTime(5 * 60_000);
+      expect(game.status, `seed ${seed}`).toBe("FINISHED");
+    }
+  });
+
   it("the same seed gives the same match", () => {
     const play = () => {
       const { game, outlet } = snake({ autoplay: true }, 21);
