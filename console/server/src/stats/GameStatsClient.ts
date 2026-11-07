@@ -48,8 +48,14 @@ export class GameStatsClient {
   summary(): Promise<unknown> {
     return this.#get(this.#analyzer, "/api/v1/summary");
   }
-  gameSummary(gameId: GameId): Promise<unknown> {
-    return this.#get(this.#analyzer, `/api/v1/games/${gameId}/summary`);
+  /** null while the game has no analyzed match (the analyzer answers 404 then). */
+  async gameSummary(gameId: GameId): Promise<unknown> {
+    try {
+      return await this.#get(this.#analyzer, `/api/v1/games/${gameId}/summary`);
+    } catch (err) {
+      if (err instanceof GameStatsError && err.status === 404) return null;
+      throw err;
+    }
   }
   leaderboard(gameId: GameId): Promise<unknown> {
     return this.#get(this.#analyzer, `/api/v1/games/${gameId}/leaderboard`);

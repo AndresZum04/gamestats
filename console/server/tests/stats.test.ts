@@ -92,6 +92,15 @@ describe("StatsHub", () => {
     expect(gs.calls.filter((c) => c.startsWith("ingestor:8080"))).toHaveLength(2);
   });
 
+  it("a game without analyzed matches is not a failure: its summary is null", async () => {
+    const gs = fakeGameStats();
+    gs.state.missing.add("/api/v1/games/snake/summary");
+    const snap = await new StatsHub(gs.client).poll();
+    expect(snap?.gamestatsUp).toBe(true);
+    expect(snap?.byGame.snake.summary).toBeNull();
+    expect(snap?.byGame.trivia.summary).toEqual({ path: "/api/v1/games/trivia/summary" });
+  });
+
   it("when GameStats is down: gamestatsUp false and the last good data stays", async () => {
     let now = Date.parse("2026-11-06T20:00:00Z");
     const gs = fakeGameStats();
