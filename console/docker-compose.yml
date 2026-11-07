@@ -1,0 +1,52 @@
+# GameConsole: la consola web, la IA de Blackjack en Prolog y GameStats
+# (analyzer + ingestor), todo con un solo comando:
+#
+#   docker compose up -d --build --wait
+#
+# GameStats se incluye tal cual desde ../docker-compose.yml, con los ajustes
+# de compose.gamestats-override.yml. La consola escribe los eventos en la
+# misma carpeta de datos que lee el ingestor: GAMESTATS_DATA, que install.sh
+# escribe en console/.env (para la consola) y en ../.env (el archivo que lee
+# el compose incluido). Sin instalador, las dos rutas por defecto apuntan a
+# la carpeta gamestats-data de la raíz. Necesita Docker Compose 2.24 o mayor.
+name: gameconsole
+
+include:
+  - path:
+      - ../docker-compose.yml
+      - compose.gamestats-override.yml
+
+services:
+  prolog:
+    build: ./prolog
+    image: gameconsole-prolog
+    ports: ["4000:4000"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "swipl",
+          "-g",
+          "use_module(library(http/http_open)),http_open('http://localhost:4000/health',S,[]),close(S)",
+          "-t",
+          "halt",
+        ]
+      interval: 5s
+      retries: 20
+
+  console:
+    build: .
+    image: gameconsole-console
+    user: "${GAMESTATS_UID:-10001}:${GAMESTATS_GID:-10001}"
+    ports: ["3000:3000"]
+    environment:
+      EVENT_SINK: file
+      EVENTS_DIR: /data/events
+      GAMESTATS_INGESTOR_URL: http://ingestor:8080
+      GAMESTATS_ANALYZER_URL: http://analyzer:8081
+      PROLOG_URL: http://prolog:4000
+    volumes: ["${GAMESTATS_DATA:-../gamestats-data}:/data"]
+    depends_on:
+      ingestor: { condition: service_healthy }
+      analyzer: { condition: service_healthy }
+      prolog: { condition: service_healthy }

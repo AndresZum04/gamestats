@@ -1,6 +1,8 @@
 # Entrega continua: cuando CI termina bien en main (o se crea un tag v*),
-# publica las tres imágenes en GitHub Container Registry y, si la VM de
-# Azure está configurada (secreto DEPLOY_HOST), la actualiza por SSH.
+# publica en GitHub Container Registry las imágenes de GameStats (analyzer,
+# ingestor, simulator) y de la consola (gameconsole-console y
+# gameconsole-prolog) y, si la VM de Azure está configurada (secreto
+# DEPLOY_HOST), actualiza GameStats por SSH.
 name: CD
 
 on:
@@ -31,7 +33,12 @@ jobs:
       deploy: ${{ steps.meta.outputs.deploy }}
     strategy:
       matrix:
-        service: [analyzer, ingestor, simulator]
+        include:
+          - { service: analyzer, image: gamestats-analyzer, context: ., file: analyzer/Dockerfile }
+          - { service: ingestor, image: gamestats-ingestor, context: ., file: ingestor/Dockerfile }
+          - { service: simulator, image: gamestats-simulator, context: ., file: simulator/Dockerfile }
+          - { service: console, image: gameconsole-console, context: console, file: console/Dockerfile }
+          - { service: prolog, image: gameconsole-prolog, context: console/prolog, file: console/prolog/Dockerfile }
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +54,7 @@ jobs:
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           short="${SHA::7}"
           prefix="ghcr.io/$owner/gamestats"
-          image="$prefix-${{ matrix.service }}"
+          image="ghcr.io/$owner/${{ matrix.image }}"
           tags="$image:$short"
           if [ "$GITHUB_REF_TYPE" = "tag" ]; then
             tags="$tags,$image:$GITHUB_REF_NAME"
@@ -73,8 +80,8 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ${{ matrix.service }}/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha,scope=${{ matrix.service }}

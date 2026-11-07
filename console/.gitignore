@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.tsbuildinfo
+playwright-report/
+test-results/
+coverage/
+ci-artifacts/
+ci-artifacts.tar.gz

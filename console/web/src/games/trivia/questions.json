@@ -1,0 +1,82 @@
+[
+  {
+    "id": "q-001",
+    "category": "CIENCIA",
+    "difficulty": "EASY",
+    "text": "¿Cuál es el planeta más cercano al Sol?",
+    "options": { "A": "Venus", "B": "Mercurio", "C": "Marte", "D": "Tierra" },
+    "answer": "B"
+  },
+  {
+    "id": "q-002",
+    "category": "CIENCIA",
+    "difficulty": "MEDIUM",
+    "text": "¿Qué gas absorben las plantas para hacer la fotosíntesis?",
+    "options": { "A": "Oxígeno", "B": "Nitrógeno", "C": "Dióxido de carbono", "D": "Helio" },
+    "answer": "C"
+  },
+  {
+    "id": "q-003",
+    "category": "HISTORIA",
+    "difficulty": "EASY",
+    "text": "¿En qué año se independizó Costa Rica de España?",
+    "options": { "A": "1821", "B": "1848", "C": "1810", "D": "1899" },
+    "answer": "A"
+  },
+  {
+    "id": "q-004",
+    "category": "HISTORIA",
+    "difficulty": "HARD",
+    "text": "¿En qué año abolió Costa Rica su ejército?",
+    "options": { "A": "1921", "B": "1955", "C": "1948", "D": "1963" },
+    "answer": "C"
+  },
+  {
+    "id": "q-005",
+    "category": "DEPORTES",
+    "difficulty": "EASY",
+    "text": "¿Cuántos jugadores de un equipo de fútbol están en la cancha a la vez?",
+    "options": { "A": "9", "B": "10", "C": "12", "D": "11" },
+    "answer": "D"
+  },
+  {
+    "id": "q-006",
+    "category": "DEPORTES",
+    "difficulty": "MEDIUM",
+    "text": "¿Cada cuántos años se juegan los Juegos Olímpicos de verano?",
+    "options": { "A": "Dos", "B": "Cuatro", "C": "Cinco", "D": "Tres" },
+    "answer": "B"
+  },
+  {
+    "id": "q-007",
+    "category": "GEOGRAFIA",
+    "difficulty": "EASY",
+    "text": "¿Cuál es la capital de Costa Rica?",
+    "options": { "A": "Cartago", "B": "Alajuela", "C": "San José", "D": "Heredia" },
+    "answer": "C"
+  },
+  {
+    "id": "q-008",
+    "category": "GEOGRAFIA",
+    "difficulty": "HARD",
+    "text": "¿Cuál es el río más largo de África?",
+    "options": { "A": "Congo", "B": "Níger", "C": "Zambeze", "D": "Nilo" },
+    "answer": "D"
+  },
+  {
+    "id": "q-009",
+    "category": "ENTRETENIMIENTO",
+    "difficulty": "EASY",
+    "text": "¿Cuántas cuerdas tiene una guitarra clásica?",
+    "options": { "A": "Seis", "B": "Cuatro", "C": "Doce", "D": "Ocho" },
+    "answer": "A"
+  },
+  {
+    "id": "q-010",
+    "category": "ENTRETENIMIENTO",
+    "difficulty": "MEDIUM",
+    "text": "¿Cuántas casillas tiene un tablero de ajedrez?",
+    "options": { "A": "36", "B": "64", "C": "81", "D": "100" },
+    "answer": "B"
+  }
+]

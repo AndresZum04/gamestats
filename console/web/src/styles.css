@@ -1,0 +1,445 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c2230;
+  --muted: #5d6677;
+  --border: #d9dde5;
+  --accent: #2f6fed;
+  --accent-text: #ffffff;
+  --danger: #c23b3b;
+  --focus: #f0a400;
+  --ok: #1f8a4c;
+  --ok-bg: #e3f5ea;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151c;
+    --surface: #1b2029;
+    --text: #e7eaf0;
+    --muted: #9aa3b5;
+    --border: #2d3442;
+    --accent: #5b8cff;
+    --danger: #ff6b6b;
+    --ok: #5fd08f;
+    --ok-bg: #173826;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+nav.top {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+nav.top a {
+  color: var(--text);
+  text-decoration: none;
+}
+nav.top .brand {
+  font-weight: 700;
+  margin-right: auto;
+}
+
+button,
+a.button {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+button.danger {
+  color: var(--danger);
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+label.name input {
+  font: inherit;
+  padding: 6px 8px;
+  margin-left: 8px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 16px 0 32px;
+}
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.card h2 {
+  margin-top: 0;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.instances {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+.instances.empty::before {
+  content: "Todavía no hay partidas abiertas.";
+  color: var(--muted);
+}
+.instance {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.instance.focused {
+  border-color: var(--focus);
+}
+.instance header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.instance h3 {
+  font-size: 1rem;
+  margin: 0;
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+}
+.instance header .badge {
+  margin-right: auto;
+}
+.instance-body {
+  padding: 12px;
+}
+.badge {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.error {
+  color: var(--danger);
+}
+
+/* Trivia */
+.trivia .question {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 8px 0 12px;
+}
+.trivia .options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.trivia .option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  padding: 10px;
+}
+.trivia .option:disabled {
+  opacity: 1;
+}
+.trivia .option.correct {
+  border-color: var(--ok);
+  background: var(--ok-bg);
+}
+.trivia .key {
+  font-weight: 700;
+  color: var(--muted);
+}
+.trivia .timer {
+  font-weight: 700;
+}
+.trivia .seats li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+}
+.trivia .seats input {
+  font: inherit;
+  padding: 4px 6px;
+}
+table.scores {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+table.scores th,
+table.scores td {
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+table.scores .num {
+  text-align: right;
+}
+table.scores tr.on-turn td {
+  font-weight: 700;
+}
+
+/* Snake */
+.snake-hud {
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.snake-stage {
+  position: relative;
+  max-width: 400px;
+}
+.snake-board {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+.snake-message {
+  position: absolute;
+  inset: auto 0 8px;
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+}
+.snake-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 48px);
+  grid-template-areas: ". up ." "left down right";
+  gap: 4px;
+  margin-top: 8px;
+}
+.snake-pad button {
+  height: 40px;
+  padding: 0;
+  touch-action: manipulation;
+}
+.snake-pad .pad-up {
+  grid-area: up;
+}
+.snake-pad .pad-left {
+  grid-area: left;
+}
+.snake-pad .pad-down {
+  grid-area: down;
+}
+.snake-pad .pad-right {
+  grid-area: right;
+}
+/* Hidden with a mouse on a wide screen; phones and tablets keep the buttons. */
+@media (hover: hover) and (pointer: fine) and (min-width: 601px) {
+  .snake-pad {
+    display: none;
+  }
+}
+
+/* Blackjack */
+.bj-dealer,
+.bj-seat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.bj-seat.on-turn {
+  border-color: var(--focus);
+}
+.bj-seat.out {
+  opacity: 0.6;
+}
+.blackjack .cards {
+  display: flex;
+  gap: 4px;
+}
+.blackjack .card {
+  display: inline-block;
+  min-width: 32px;
+  padding: 4px 6px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+}
+.blackjack .card.red {
+  color: var(--danger);
+}
+.blackjack .card.back {
+  color: var(--muted);
+}
+.blackjack .value {
+  font-weight: 700;
+}
+.bj-status {
+  margin-left: auto;
+  font-weight: 600;
+}
+.bj-controls input {
+  font: inherit;
+  width: 6em;
+  padding: 4px 6px;
+}
+.blackjack fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 8px 0;
+  display: flex;
+  gap: 16px;
+}
+
+.warning {
+  color: var(--danger);
+  font-weight: 600;
+}
+.bj-why {
+  margin-top: 12px;
+}
+.bj-why summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.bj-why table {
+  font-size: 0.9rem;
+}
+
+/* Panel */
+.panel-status {
+  color: var(--muted);
+}
+.zone {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 16px 16px;
+  margin-bottom: 24px;
+}
+.zone .cards {
+  margin: 16px 0 0;
+}
+.card h3 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+.zone .card {
+  min-width: 0;
+  overflow-x: auto;
+}
+.zone table.scores {
+  font-size: 0.9rem;
+}
+.zone table.scores th {
+  white-space: nowrap;
+}
+button.link {
+  white-space: nowrap;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding-top: 16px;
+}
+.tab.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+dl.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+}
+dl.facts dt {
+  color: var(--muted);
+}
+dl.facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.chart {
+  margin-top: 16px;
+}
+.chart-box {
+  position: relative;
+  height: 260px;
+}
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  text-decoration: underline;
+  font-family: ui-monospace, monospace;
+}
+.detail .players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+.detail h4 {
+  margin: 0 0 6px;
+}
+
+@media (max-width: 480px) {
+  .instances {
+    grid-template-columns: 1fr;
+  }
+  .trivia .options {
+    grid-template-columns: 1fr;
+  }
+}

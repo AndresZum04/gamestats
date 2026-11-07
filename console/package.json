@@ -1,0 +1,37 @@
+{
+  "name": "gameconsole",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Web console with three games that sends its events to GameStats",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "shared",
+    "web",
+    "server",
+    "e2e"
+  ],
+  "scripts": {
+    "build": "npm run build -w shared -w server -w web",
+    "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test --workspaces --if-present -- --coverage --coverage.reporter=text-summary --coverage.reporter=html",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "dev": "npm run build -w shared && node scripts/dev.mjs",
+    "e2e": "npm run e2e -w e2e",
+    "demo": "bash scripts/demo.sh"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "20.19.43",
+    "@vitest/coverage-v8": "2.1.9",
+    "eslint": "9.39.5",
+    "globals": "15.15.0",
+    "prettier": "3.9.10",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "2.1.9"
+  }
+}
