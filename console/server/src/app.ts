@@ -29,7 +29,12 @@ export interface AppOptions {
 /** Builds the server without listening, so tests can call it with inject(). */
 export function buildApp(config: Config, options: AppOptions = {}): FastifyInstance {
   // A batch of 500 events is about 200 KB; leave room.
-  const app = Fastify({ logger: options.logger ?? false, bodyLimit: 5 * 1024 * 1024 });
+  // Requests are not logged one by one: the healthcheck alone would write a line every 5 s.
+  const app = Fastify({
+    logger: options.logger ?? false,
+    disableRequestLogging: true,
+    bodyLimit: 5 * 1024 * 1024,
+  });
 
   const sink =
     options.sink ??

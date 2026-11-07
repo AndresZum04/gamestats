@@ -1,0 +1,10 @@
+# Ajustes del ingestor de GameStats para la consola, sin tocar el
+# docker-compose.yml de GameStats.
+services:
+  ingestor:
+    environment:
+      # Una pausa normal nunca cierra una partida; la consola ya la cierra
+      # con PLAYER_LEFT (IDLE) a los 5 minutos sin acción.
+      MATCH_IDLE_TIMEOUT: 900s
+      # Copias LIVE de las partidas en curso para el panel.
+      LIVE_SNAPSHOT_INTERVAL: 10s
