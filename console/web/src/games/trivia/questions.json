@@ -1,82 +1,46 @@
 [
-  {
-    "id": "q-001",
-    "category": "CIENCIA",
-    "difficulty": "EASY",
-    "text": "¿Cuál es el planeta más cercano al Sol?",
-    "options": { "A": "Venus", "B": "Mercurio", "C": "Marte", "D": "Tierra" },
-    "answer": "B"
-  },
-  {
-    "id": "q-002",
-    "category": "CIENCIA",
-    "difficulty": "MEDIUM",
-    "text": "¿Qué gas absorben las plantas para hacer la fotosíntesis?",
-    "options": { "A": "Oxígeno", "B": "Nitrógeno", "C": "Dióxido de carbono", "D": "Helio" },
-    "answer": "C"
-  },
-  {
-    "id": "q-003",
-    "category": "HISTORIA",
-    "difficulty": "EASY",
-    "text": "¿En qué año se independizó Costa Rica de España?",
-    "options": { "A": "1821", "B": "1848", "C": "1810", "D": "1899" },
-    "answer": "A"
-  },
-  {
-    "id": "q-004",
-    "category": "HISTORIA",
-    "difficulty": "HARD",
-    "text": "¿En qué año abolió Costa Rica su ejército?",
-    "options": { "A": "1921", "B": "1955", "C": "1948", "D": "1963" },
-    "answer": "C"
-  },
-  {
-    "id": "q-005",
-    "category": "DEPORTES",
-    "difficulty": "EASY",
-    "text": "¿Cuántos jugadores de un equipo de fútbol están en la cancha a la vez?",
-    "options": { "A": "9", "B": "10", "C": "12", "D": "11" },
-    "answer": "D"
-  },
-  {
-    "id": "q-006",
-    "category": "DEPORTES",
-    "difficulty": "MEDIUM",
-    "text": "¿Cada cuántos años se juegan los Juegos Olímpicos de verano?",
-    "options": { "A": "Dos", "B": "Cuatro", "C": "Cinco", "D": "Tres" },
-    "answer": "B"
-  },
-  {
-    "id": "q-007",
-    "category": "GEOGRAFIA",
-    "difficulty": "EASY",
-    "text": "¿Cuál es la capital de Costa Rica?",
-    "options": { "A": "Cartago", "B": "Alajuela", "C": "San José", "D": "Heredia" },
-    "answer": "C"
-  },
-  {
-    "id": "q-008",
-    "category": "GEOGRAFIA",
-    "difficulty": "HARD",
-    "text": "¿Cuál es el río más largo de África?",
-    "options": { "A": "Congo", "B": "Níger", "C": "Zambeze", "D": "Nilo" },
-    "answer": "D"
-  },
-  {
-    "id": "q-009",
-    "category": "ENTRETENIMIENTO",
-    "difficulty": "EASY",
-    "text": "¿Cuántas cuerdas tiene una guitarra clásica?",
-    "options": { "A": "Seis", "B": "Cuatro", "C": "Doce", "D": "Ocho" },
-    "answer": "A"
-  },
-  {
-    "id": "q-010",
-    "category": "ENTRETENIMIENTO",
-    "difficulty": "MEDIUM",
-    "text": "¿Cuántas casillas tiene un tablero de ajedrez?",
-    "options": { "A": "36", "B": "64", "C": "81", "D": "100" },
-    "answer": "B"
-  }
+  {"id": "q-001", "category": "CIENCIA", "difficulty": "EASY", "text": "¿Qué gas absorben las plantas del aire para realizar la fotosíntesis?", "options": {"A": "Oxígeno", "B": "Nitrógeno", "C": "Dióxido de carbono", "D": "Hidrógeno"}, "answer": "C"},
+  {"id": "q-002", "category": "CIENCIA", "difficulty": "EASY", "text": "¿Cuántos huesos tiene el esqueleto de un ser humano adulto?", "options": {"A": "206", "B": "180", "C": "250", "D": "300"}, "answer": "A"},
+  {"id": "q-003", "category": "CIENCIA", "difficulty": "EASY", "text": "¿Cuál es el símbolo químico del oro?", "options": {"A": "Ag", "B": "Au", "C": "Or", "D": "Gd"}, "answer": "B"},
+  {"id": "q-004", "category": "CIENCIA", "difficulty": "MEDIUM", "text": "¿Qué partícula del átomo tiene carga eléctrica negativa?", "options": {"A": "Protón", "B": "Neutrón", "C": "Electrón", "D": "Fotón"}, "answer": "C"},
+  {"id": "q-005", "category": "CIENCIA", "difficulty": "MEDIUM", "text": "¿Cuál es el órgano más grande del cuerpo humano?", "options": {"A": "El hígado", "B": "La piel", "C": "El cerebro", "D": "El pulmón"}, "answer": "B"},
+  {"id": "q-006", "category": "CIENCIA", "difficulty": "MEDIUM", "text": "¿Qué científico formuló la ley de la gravitación universal?", "options": {"A": "Galileo Galilei", "B": "Albert Einstein", "C": "Johannes Kepler", "D": "Isaac Newton"}, "answer": "D"},
+  {"id": "q-007", "category": "CIENCIA", "difficulty": "HARD", "text": "¿Qué elemento químico tiene el número atómico 26?", "options": {"A": "Hierro", "B": "Cobalto", "C": "Níquel", "D": "Manganeso"}, "answer": "A"},
+  {"id": "q-008", "category": "CIENCIA", "difficulty": "HARD", "text": "¿Cuál es la unidad de capacitancia eléctrica en el Sistema Internacional?", "options": {"A": "Henrio", "B": "Ohmio", "C": "Weber", "D": "Faradio"}, "answer": "D"},
+
+  {"id": "q-009", "category": "HISTORIA", "difficulty": "EASY", "text": "¿Quién fue el primer presidente de los Estados Unidos?", "options": {"A": "Thomas Jefferson", "B": "George Washington", "C": "Abraham Lincoln", "D": "Benjamin Franklin"}, "answer": "B"},
+  {"id": "q-010", "category": "HISTORIA", "difficulty": "EASY", "text": "¿En qué año comenzó la Revolución Francesa?", "options": {"A": "1789", "B": "1776", "C": "1804", "D": "1815"}, "answer": "A"},
+  {"id": "q-011", "category": "HISTORIA", "difficulty": "EASY", "text": "¿Qué civilización construyó la ciudadela de Machu Picchu?", "options": {"A": "Maya", "B": "Azteca", "C": "Inca", "D": "Olmeca"}, "answer": "C"},
+  {"id": "q-012", "category": "HISTORIA", "difficulty": "MEDIUM", "text": "¿En qué año cayó el Muro de Berlín?", "options": {"A": "1961", "B": "1975", "C": "1991", "D": "1989"}, "answer": "D"},
+  {"id": "q-013", "category": "HISTORIA", "difficulty": "MEDIUM", "text": "¿En qué año se abolió el ejército en Costa Rica?", "options": {"A": "1821", "B": "1948", "C": "1856", "D": "1963"}, "answer": "B"},
+  {"id": "q-014", "category": "HISTORIA", "difficulty": "MEDIUM", "text": "¿En qué año terminó la Segunda Guerra Mundial?", "options": {"A": "1939", "B": "1943", "C": "1945", "D": "1950"}, "answer": "C"},
+  {"id": "q-015", "category": "HISTORIA", "difficulty": "HARD", "text": "¿Qué tratado, firmado en 1494, repartió las tierras recién descubiertas entre España y Portugal?", "options": {"A": "Tratado de Utrecht", "B": "Tratado de Versalles", "C": "Paz de Westfalia", "D": "Tratado de Tordesillas"}, "answer": "D"},
+  {"id": "q-016", "category": "HISTORIA", "difficulty": "HARD", "text": "¿En qué año el rey Juan sin Tierra firmó la Carta Magna en Inglaterra?", "options": {"A": "1215", "B": "1066", "C": "1348", "D": "1492"}, "answer": "A"},
+
+  {"id": "q-017", "category": "DEPORTES", "difficulty": "EASY", "text": "¿Cuántos jugadores de cada equipo están en la cancha al inicio de un partido de fútbol, contando al portero?", "options": {"A": "9", "B": "10", "C": "11", "D": "12"}, "answer": "C"},
+  {"id": "q-018", "category": "DEPORTES", "difficulty": "EASY", "text": "¿En qué deporte se disputa el torneo de Wimbledon?", "options": {"A": "Tenis", "B": "Golf", "C": "Cricket", "D": "Bádminton"}, "answer": "A"},
+  {"id": "q-019", "category": "DEPORTES", "difficulty": "EASY", "text": "¿Cuántos aros entrelazados forman el símbolo olímpico?", "options": {"A": "4", "B": "5", "C": "6", "D": "7"}, "answer": "B"},
+  {"id": "q-020", "category": "DEPORTES", "difficulty": "MEDIUM", "text": "¿Qué selección ganó la Copa Mundial de la FIFA de 2010?", "options": {"A": "Países Bajos", "B": "Alemania", "C": "Uruguay", "D": "España"}, "answer": "D"},
+  {"id": "q-021", "category": "DEPORTES", "difficulty": "MEDIUM", "text": "¿Cuál es la distancia oficial de una maratón?", "options": {"A": "42,195 km", "B": "40 km", "C": "45 km", "D": "50 km"}, "answer": "A"},
+  {"id": "q-022", "category": "DEPORTES", "difficulty": "MEDIUM", "text": "¿En qué país se originó el judo?", "options": {"A": "China", "B": "Corea del Sur", "C": "Japón", "D": "Brasil"}, "answer": "C"},
+  {"id": "q-023", "category": "DEPORTES", "difficulty": "HARD", "text": "¿Qué ciudad fue sede de los Juegos Olímpicos de verano de 1992?", "options": {"A": "Seúl", "B": "Barcelona", "C": "Atlanta", "D": "Los Ángeles"}, "answer": "B"},
+  {"id": "q-024", "category": "DEPORTES", "difficulty": "HARD", "text": "¿Qué país fue sede y campeón del primer Mundial de fútbol, en 1930?", "options": {"A": "Argentina", "B": "Italia", "C": "Brasil", "D": "Uruguay"}, "answer": "D"},
+
+  {"id": "q-025", "category": "GEOGRAFIA", "difficulty": "EASY", "text": "¿Cuál es la capital de Francia?", "options": {"A": "Lyon", "B": "París", "C": "Marsella", "D": "Burdeos"}, "answer": "B"},
+  {"id": "q-026", "category": "GEOGRAFIA", "difficulty": "EASY", "text": "¿Cuál es el océano más grande del planeta?", "options": {"A": "Atlántico", "B": "Índico", "C": "Pacífico", "D": "Ártico"}, "answer": "C"},
+  {"id": "q-027", "category": "GEOGRAFIA", "difficulty": "EASY", "text": "¿En qué continente se encuentra Brasil?", "options": {"A": "África", "B": "Europa", "C": "América del Norte", "D": "América del Sur"}, "answer": "D"},
+  {"id": "q-028", "category": "GEOGRAFIA", "difficulty": "MEDIUM", "text": "¿Cuál es el río con mayor caudal del mundo?", "options": {"A": "Amazonas", "B": "Nilo", "C": "Misisipi", "D": "Yangtsé"}, "answer": "A"},
+  {"id": "q-029", "category": "GEOGRAFIA", "difficulty": "MEDIUM", "text": "¿Cuál es la capital de Australia?", "options": {"A": "Canberra", "B": "Sídney", "C": "Melbourne", "D": "Perth"}, "answer": "A"},
+  {"id": "q-030", "category": "GEOGRAFIA", "difficulty": "MEDIUM", "text": "¿Cuál es el desierto cálido más grande del mundo?", "options": {"A": "Gobi", "B": "Sahara", "C": "Kalahari", "D": "Arábigo"}, "answer": "B"},
+  {"id": "q-031", "category": "GEOGRAFIA", "difficulty": "HARD", "text": "¿Cuál es el lago más grande de Centroamérica?", "options": {"A": "Lago de Izabal", "B": "Lago de Managua", "C": "Lago de Nicaragua (Cocibolca)", "D": "Lago de Atitlán"}, "answer": "C"},
+  {"id": "q-032", "category": "GEOGRAFIA", "difficulty": "HARD", "text": "¿Cuál es la capital de Turquía?", "options": {"A": "Estambul", "B": "Esmirna", "C": "Antalya", "D": "Ankara"}, "answer": "D"},
+
+  {"id": "q-033", "category": "ENTRETENIMIENTO", "difficulty": "EASY", "text": "¿Quién escribió la novela «Don Quijote de la Mancha»?", "options": {"A": "Miguel de Cervantes", "B": "Lope de Vega", "C": "Francisco de Quevedo", "D": "Pedro Calderón de la Barca"}, "answer": "A"},
+  {"id": "q-034", "category": "ENTRETENIMIENTO", "difficulty": "EASY", "text": "¿Cómo se llama el joven mago protagonista de la saga escrita por J. K. Rowling?", "options": {"A": "Ron Weasley", "B": "Harry Potter", "C": "Neville Longbottom", "D": "Draco Malfoy"}, "answer": "B"},
+  {"id": "q-035", "category": "ENTRETENIMIENTO", "difficulty": "EASY", "text": "¿Qué instrumento musical tiene 88 teclas en su versión estándar?", "options": {"A": "Órgano", "B": "Acordeón", "C": "Piano", "D": "Arpa"}, "answer": "C"},
+  {"id": "q-036", "category": "ENTRETENIMIENTO", "difficulty": "MEDIUM", "text": "¿Quién pintó «La noche estrellada»?", "options": {"A": "Claude Monet", "B": "Pablo Picasso", "C": "Salvador Dalí", "D": "Vincent van Gogh"}, "answer": "D"},
+  {"id": "q-037", "category": "ENTRETENIMIENTO", "difficulty": "MEDIUM", "text": "¿Quién dirigió la película «Titanic» de 1997?", "options": {"A": "Steven Spielberg", "B": "Ridley Scott", "C": "James Cameron", "D": "Christopher Nolan"}, "answer": "C"},
+  {"id": "q-038", "category": "ENTRETENIMIENTO", "difficulty": "MEDIUM", "text": "¿Quién es el autor de «Cien años de soledad»?", "options": {"A": "Gabriel García Márquez", "B": "Mario Vargas Llosa", "C": "Julio Cortázar", "D": "Pablo Neruda"}, "answer": "A"},
+  {"id": "q-039", "category": "ENTRETENIMIENTO", "difficulty": "HARD", "text": "¿Quién compuso el conjunto de conciertos «Las cuatro estaciones»?", "options": {"A": "Wolfgang Amadeus Mozart", "B": "Antonio Vivaldi", "C": "Ludwig van Beethoven", "D": "Johann Sebastian Bach"}, "answer": "B"},
+  {"id": "q-040", "category": "ENTRETENIMIENTO", "difficulty": "HARD", "text": "¿Quién pintó «Las meninas»?", "options": {"A": "Francisco de Goya", "B": "El Greco", "C": "Bartolomé Esteban Murillo", "D": "Diego Velázquez"}, "answer": "D"}
 ]
