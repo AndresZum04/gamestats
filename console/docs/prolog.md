@@ -38,7 +38,7 @@ Mientras calcula una jugada, el código supone que las probabilidades no cambian
 Usa el conteo Hi-Lo. Compara el mazo actual con un zapato completo de 6 mazos para saber qué cartas ya salieron:
 
 |Cartas que salieron|Puntos|
-|-------------------||-----|
+|-------------------|-----|
 |2 a 6 | +1|
 |7 a 9	| 0|
 |10, J, Q, K, A| −1|
