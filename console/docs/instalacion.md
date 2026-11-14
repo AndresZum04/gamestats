@@ -48,13 +48,13 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 Estas capturas fueron tomadas de la instalacion en la laptop de Dilan Andrey Sibaja Ugalde, con Docker Compose version v5.4.0.
 
 Clonacion del repositorio:
-![captura de la clonacion del repositorio](../img/captura_clonacion_proyecto2.png)
+![captura de la clonacion del repositorio](img/captura_clonacion_proyecto2.png)
 Instalacion:
-![captura del comando de instalacion](../img/captura_ejecucion_instalador_proyecto2.png)
+![captura del comando de instalacion](img/captura_ejecucion_instalador_proyecto2.png)
 Resultados de la instalacion:
-![captura del resultado del comando de instalacion](../img/captura_resultado_instalacion_proyecto2.png)
+![captura del resultado del comando de instalacion](img/captura_resultado_instalacion_proyecto2.png)
 Ejecucion con partidas automaticas en `http://localhost:3000/?autoplay=1&seed=1&open=trivia,snake,blackjack,trivia,snake,blackjack`:
-![captura de ejecucion de gameconsole](../img/captura_ejecucion_gameconsole.png)
+![captura de ejecucion de gameconsole](img/captura_ejecucion_gameconsole.png)
 Desinstalacion:
 ![captura de desinstalacion](img/captura_desinstalacion.png)
 
