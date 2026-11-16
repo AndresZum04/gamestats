@@ -43,7 +43,7 @@ en Windows:
 ```bash
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
-### ejemplo de ejecucion
+# ejemplo de ejecucion
 
 Estas capturas fueron tomadas de la instalacion en la laptop de Dilan Andrey Sibaja Ugalde, con Docker Compose version v5.4.0.
 
