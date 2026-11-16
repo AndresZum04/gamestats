@@ -60,3 +60,31 @@ Desinstalacion:
 
 # Problemas comunes
 
+### "Docker está instalado pero no responde"
+
+Docker Desktop está cerrado o todavía arrancando. Hay que abrirlo y esperar a que diga "Engine running". En Linux: `sudo systemctl start docker`.
+
+### "permission denied while trying to connect to the Docker daemon" (Linux)
+
+El usuario no está en el grupo `docker`. Se arregla con `sudo usermod -aG docker $USER` y cerrando la sesión.
+
+### "El puerto 3000 está ocupado por otro programa"
+
+Suele ser otro servidor de desarrollo. Para ver cuál es: `lsof -i :3000` en Linux y macOS, o `Get-NetTCPConnection -LocalPort 3000` en PowerShell. Hay que cerrarlo y volver a correr el instalador.
+
+### WSL2 en Windows
+
+Docker Desktop necesita WSL2. Si al abrirlo pide actualizar el kernel de WSL, se hace desde una consola de administrador con `wsl --update` y después se reinicia Docker Desktop.
+
+### "No se puede cargar el archivo install.ps1 porque la ejecución de scripts está deshabilitada"
+
+Es la política de ejecución de Windows. Hay que usar el comando completo: `powershell -ExecutionPolicy Bypass -File .\install.ps1`. No cambia la configuración del sistema.
+
+### La primera compilación falla descargando dependencias
+
+Es un corte de red. Volver a correr el instalador sigue desde donde quedó.
+
+### las partidas juegan automaticamente y no responden mi input
+
+eso es porque al abrir el link: "http://localhost:3000/?autoplay=1&seed=1&open=trivia,snake,blackjack,trivia,snake,blackjack", el 'autoplay' esta activado (http://localhost:3000/? *autoplay=1* &seed=1&open=trivia,snake,blackjack,trivia,snake,blackjack), porque este link es una muestra con partidas automaticas. Para usar la consola, se debe abrir este link: http://localhost:3000
+
