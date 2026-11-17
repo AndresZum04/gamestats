@@ -68,8 +68,10 @@ en el caso que la IA en prolog deje de responder, se manejan dos acciones predet
 #### Caso en el que prolog no responde
 
 ##### apuesta
+aqui el jugador cpu 1 apuesta 10 fichas como accion predeterminada
 ![apuesta predeterminada de blackjack cuando prolog no responde](docs/img/captura_error_controlado_blackjack1.png)
 ##### jugada
+aqui los jugadores cpu 1 y 2 eligieron plantarse como jugada predeterminada
 ![jugada predeterminada de blackjack cuando prolog no responde](docs/img/captura_error_controlado_blackjack2.png)
 
 ## Enlaces y video
