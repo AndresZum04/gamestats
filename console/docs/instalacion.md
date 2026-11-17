@@ -1,7 +1,6 @@
 # instalacion de la consola desde docker
 ## Requisitos
 - Docker con Compose 2.24 o mayor
-- Git bash 
 - Los puertos 3000, 4000, 8080 y 8081 libres
 - Internet durante la primer instalacion
   
