@@ -1,14 +1,3 @@
-
-1. (1 min) Qué es GameConsole y cómo se conecta con GameStats.
-2. (1 min) Instalación desde cero con `./install.sh`.
-3. (3 min) Los tres juegos, uno por uno, jugando de verdad.
-4. (2 min) Concurrencia: varias instancias en la consola y en pestañas distintas; mostrar los archivos `.jsonl` de cada partida creciendo en la carpeta de eventos.
-5. (3 min) Blackjack contra la computadora: una decisión del CPU, el panel "Por qué jugó así" y el código Prolog que la calculó.
-6. (2 min) Panel: estadísticas generales y por juego actualizándose mientras se juega; instancias en curso y terminadas.
-7. (1 min) Tolerancia a fallos: apagar Prolog y ver el respaldo; apagar GameStats, seguir jugando, encenderlo y ver que los eventos llegan.
-8. (1 min) Repositorio, CI en verde y artefactos.
-9. (1 min) Clases principales y decisiones técnicas.
-
 # Que es Gameconsole y como se conecta con GameStats (1 min)
 
 GameConsole es una consola web que puede ejecutar varios juegos simultaneamente, mostrar la cantidad de partidas en ejecucion y enviar sus eventos detectados en archivos JSON a un analizador de eventos y patrones llamado GameStats.
