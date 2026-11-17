@@ -1,6 +1,6 @@
 # GameConsole
 
-<!-- Las secciones las completa Dilan en C21. -->
+
 
 ## Qué es y cómo se conecta con GameStats
 
@@ -18,7 +18,7 @@ pasos de la instalacion a detalle en [instrucciones.md](https://github.com/Andre
 una vez instalado GameConsole, se debe abrir este link para jugar localmente: http://localhost:3000/
 (agregar el link del azure cuando este listo)
 una vez en gameconsole se presentara la siguiente pantalla
-![pantalla inicial de gameconsole](../img/captura_clonacion_proyecto2.png)
+![pantalla inicial de gameconsole](docs/img/captura_pantalla_gameConsole.png)
 
 para jugar un juego en esa misma pestaña se debe hacer click en el boto azul que dice "jugar", pero si se quiere jugar en otra pestaña, se debe hacer click en el boton blanco que dice "abrir en pestaña nueva" y el juego se ejecutara en otra pestaña.
 
@@ -27,11 +27,14 @@ Los juegos son muy intuitivos, pero para los juegos que no son tan obvios como e
 ### ejemplos de partidas en ejecucion:
 
 #### Trivia
-
-#### Snake
-
+![partida de trivia en ejecucion](docs/img/captura_ejecucion_trivia)
+#### Culebrita
+![partida de culebrita en ejecucion](docs/img/captura_ejecucion_snake)
 #### Blackjack
-
+##### apuesta
+![apuesta de partida de blackjack en ejecucion](docs/img/captura_ejecucion_blackjack1)
+##### juego
+![partida de blackjack en ejecucion](docs/img/captura_ejecucion_blackjack2)
 ## Varias instancias a la vez
 GameConsole puede registrar eventos de partidas concurrentes, enviarlos a GameStats,  y cada evento se actualiza en el panel de manera concurrente.
 
