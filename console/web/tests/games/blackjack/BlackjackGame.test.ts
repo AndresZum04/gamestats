@@ -179,6 +179,29 @@ describe("BlackjackGame", () => {
     expect(decisions.length).toBeGreaterThan(0);
   });
 
+  it("tells the view every time the person must bet or decide (issue #10)", async () => {
+    // Like the screen: it only learns what to show when the game notifies it.
+    const { game } = blackjack();
+    let shown: "BET" | "DECIDE" | null = null;
+    game.subscribe(() => (shown = game.waitingFor));
+    game.startWith(1);
+    const seen = new Set<string>();
+    for (let i = 0; i < 10_000 && game.status !== "FINISHED"; i++) {
+      const now: "BET" | "DECIDE" | null = shown;
+      if (now === "BET") {
+        seen.add(`bet-${game.round}`);
+        shown = null;
+        game.placeBet(100);
+      } else if (now === "DECIDE") {
+        shown = null;
+        game.act((game.turn?.hand.value ?? 21) < 17 ? "HIT" : "STAND");
+      }
+      await vi.advanceTimersByTimeAsync(100);
+    }
+    expect(game.status).toBe("FINISHED");
+    expect(seen.size).toBe(10); // a bet form in each of the 10 rounds
+  });
+
   it("refuses a double after the first two cards", async () => {
     const { game } = blackjack({}, 2);
     game.startWith(1);

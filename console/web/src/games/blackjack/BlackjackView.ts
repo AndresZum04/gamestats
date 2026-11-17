@@ -81,6 +81,26 @@ export class BlackjackView implements GameView {
       "div",
       { class: "blackjack setup" },
       h("p", {}, "1000 fichas, 10 rondas, apuestas de 10 a 200. El blackjack paga 3 a 2."),
+      h(
+        "ul",
+        { class: "bj-howto" },
+        h(
+          "li",
+          {},
+          "Gana quien queda más cerca de 21 que la casa sin pasarse. Las figuras valen 10 y el As vale 1 u 11.",
+        ),
+        h("li", {}, "En cada ronda primero apostás y después jugás con los botones o el teclado."),
+        h(
+          "li",
+          {},
+          "Pedir (H) saca otra carta. Plantarse (S) se queda con lo que tenés. Doblar (D) duplica la apuesta y saca una sola carta; solo se puede con las dos primeras.",
+        ),
+        h(
+          "li",
+          {},
+          "Los CPU y la casa juegan solos. Al terminar cada ronda los resultados quedan unos segundos y la siguiente empieza sola.",
+        ),
+      ),
       h("fieldset", {}, h("legend", {}, "Jugadores CPU en la mesa"), ...choices),
       h(
         "button",
@@ -120,6 +140,7 @@ export class BlackjackView implements GameView {
         h("span", { class: "value" }, dealerValue),
       ),
       h("div", { class: "bj-seats" }, ...table.seats.map((s) => this.#seat(s))),
+      this.#hint(),
       this.#controls(),
       this.#fallbackNotice(),
       this.#why(table.seats),
@@ -149,6 +170,47 @@ export class BlackjackView implements GameView {
       h("div", { class: "cards" }, ...seat.hand.cards.map(cardEl)),
       h("span", { class: "value" }, handValue(seat.hand)),
       status ? h("span", { class: "bj-status" }, status) : null,
+    );
+  }
+
+  /**
+   * One line that always says what the table is waiting for, so it never
+   * looks frozen: the person's turn (and how to play it), a CPU, the house,
+   * or the pause before the next round (issue #10).
+   */
+  #hint(): HTMLElement {
+    const game = this.#game;
+    const turn = game.turn;
+    const waiting = game.waitingFor;
+    const mine = waiting !== null;
+    let text: string;
+    if (waiting === "BET") {
+      text = "Tu turno: escribí cuánto apostar y tocá Apostar (o Enter).";
+    } else if (waiting === "DECIDE") {
+      text =
+        "Tu turno: Pedir (H) saca otra carta, Plantarse (S) se queda con lo que tenés y Doblar (D) duplica la apuesta y saca una sola carta.";
+    } else if (game.phase === "RESULTS") {
+      const seconds = Math.ceil(game.resultsPauseMs / 1000);
+      text =
+        game.round >= game.rounds
+          ? `Fin de la última ronda. La partida termina en ${seconds} s.`
+          : `Fin de la ronda ${game.round}. La ronda ${game.round + 1} empieza sola en ${seconds} s.`;
+    } else if (game.phase === "DEALER") {
+      text = "Juega la casa…";
+    } else if (turn !== null) {
+      text =
+        game.phase === "BETTING"
+          ? `Esperando la apuesta de ${turn.player.name}…`
+          : `Juega ${turn.player.name}…`;
+    } else {
+      text = "Repartiendo…";
+    }
+    const own = game.table?.seats.find((s) => s.player.id === game.host.id);
+    if (own?.out) text = `Te quedaste sin fichas; la mesa sigue con los CPU. ${text}`;
+    return h(
+      "p",
+      { class: mine ? "bj-hint mine" : "bj-hint", role: "status", "aria-live": "polite" },
+      text,
     );
   }
 

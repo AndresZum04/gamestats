@@ -130,6 +130,10 @@ export class BlackjackGame extends Game<"blackjack"> {
     const strategy = this.#turn?.strategy;
     return strategy instanceof HumanDecision ? strategy.waitingFor : null;
   }
+  /** How long the results stay on screen before the next round starts by itself. */
+  get resultsPauseMs(): number {
+    return this.#resultsPauseMs;
+  }
   get limits(): { minBet: number; maxBet: number } {
     return { minBet: MIN_BET, maxBet: MAX_BET };
   }
@@ -222,14 +226,17 @@ export class BlackjackGame extends Game<"blackjack"> {
 
     for (const seat of seats) {
       this.#turn = seat;
-      this.changed();
-      const asked = await seat.strategy.bet({
+      // Ask first and redraw after: the view shows the bet form only while
+      // the person's seat is already waiting for it (issue #10).
+      const asking = seat.strategy.bet({
         round,
         chips: seat.chips,
         minBet: MIN_BET,
         maxBet: MAX_BET,
         shoe: table.shoe.composition(),
       });
+      this.changed();
+      const asked = await asking;
       if (!this.#alive()) return;
       this.#acted(seat);
       const amount = BlackjackTable.adjustBet(asked, seat.chips);
@@ -315,6 +322,7 @@ export class BlackjackGame extends Game<"blackjack"> {
         canDouble: seat.canDouble,
         shoe: table.shoe.composition(),
       });
+      this.changed(); // now the person's buttons appear (issue #10)
       // A CPU shows its move after 400 to 800 ms; the question to Prolog runs meanwhile.
       const pause = seat.strategy.human ? null : this.#sleep(this.rng.int(...this.#thinkMs));
       const [decision] = await Promise.all([asking, pause]);
