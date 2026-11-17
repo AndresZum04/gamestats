@@ -27,29 +27,32 @@ Los juegos son muy intuitivos, pero para los juegos que no son tan obvios como e
 ### ejemplos de partidas en ejecucion:
 
 #### Trivia
-![partida de trivia en ejecucion](docs/img/captura_ejecucion_trivia)
+![partida de trivia en ejecucion](docs/img/captura_ejecucion_trivia.png)
 #### Culebrita
-![partida de culebrita en ejecucion](docs/img/captura_ejecucion_snake)
+![partida de culebrita en ejecucion](docs/img/captura_ejecucion_snake.png)
 #### Blackjack
 ##### apuesta
-![apuesta de partida de blackjack en ejecucion](docs/img/captura_ejecucion_blackjack1)
+![apuesta de partida de blackjack en ejecucion](docs/img/captura_ejecucion_blackjack1.png)
 ##### juego
-![partida de blackjack en ejecucion](docs/img/captura_ejecucion_blackjack2)
+![partida de blackjack en ejecucion](docs/img/captura_ejecucion_blackjack2.png)
+
 ## Varias instancias a la vez
 GameConsole puede registrar eventos de partidas concurrentes, enviarlos a GameStats,  y cada evento se actualiza en el panel de manera concurrente.
 
 ### ejemplo de concurrencia
 
 #### GameConsole ejecutando varios juegos a la vez
+![3 partidas (1 de trivia, 1 de culebrita y 1 de blackjack) en ejecucion simultanea](docs/img/captura_ejecucion_gameconsole.png)
 
 #### GameStats reflejando eventos en el panel
-
+![panel de gameconsole donde gamestats refleja patrones y eventos](docs/img/captura_panel_gameconsole.png)
 
 ## Panel de estadísticas
 GameConsole trabaja en conjunto con GameStats. GameConsole ejecuta juegos  y envia sus eventos a GameStats, quien procesa y analiza esos eventos en busca de patrones y los ilustra en el panel de GameConsole.
 Cabe recalcar que GameConsole no analiza los juegos de su panel en ninguna manera, solo se limita a enviar eventos y dejar esa responsabilidad a GameStats.
 
 #### Panel de estadisticas de GameConsole
+![panel de gameconsole donde gamestats refleja patrones y eventos](docs/img/captura_panel_gameconsole.png)
 
 ## Pruebas
 Varios juegos y el mismo GameConsole pueden manejar errores.
@@ -57,14 +60,16 @@ Varios juegos y el mismo GameConsole pueden manejar errores.
 en el caso de que se pierda conexion con GameStats, el panel muestra los ultimos eventos antes de que se perdiera la conexion mientras GameConsole guarda los nuevos eventos que esten ocurriendo en ese momento y apenas recupere conexion los envia a GameStats para que siga su curso.
 
 #### caso en el que gameStats no responde
-
+![panel de gameconsole cuando gamestats no responde](docs/img/captura_fallo_gamestats_gameconsole.png)
 ### BlackJack
 en el caso que la IA en prolog deje de responder, se manejan dos acciones predeterminadas de respaldo:
 1. al apostar, se apuesta el minimo de 10 fichas
 2. al jugar, siempre se elije plantarse (STAND)
 #### Caso en el que prolog no responde
-##### apuesta
 
+##### apuesta
+![apuesta predeterminada de blackjack cuando prolog no responde](docs/img/captura_error_controlado_blackjack1.png)
 ##### jugada
+![jugada predeterminada de blackjack cuando prolog no responde](docs/img/captura_error_controlado_blackjack2.png)
 
 ## Enlaces y video
