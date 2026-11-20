@@ -1,7 +1,8 @@
 # Eventos y envio
 
-en este documento se encuentran los eventos que surgen de cada accion del jugador, tanto los especificos de cada juego como los generales. 
+en este documento se encuentran los eventos que surgen de cada accion del jugador, tanto los especificos de cada juego como los generales, ademas de como funciona el envio de estos eventos.
 
+## Eventos
 ### reglas comunes entre eventos
 
 Todos los eventos llevan estos campos, con estas reglas:
@@ -74,3 +75,21 @@ Ids de jugador: los humanos usan `p-` más el nombre en minúsculas sin espacios
 | `MATCH_FINISHED` | null | `durationMs`, `results` con `placement` por fichas finales |
 
 Cada decisión de un CPU produce dos eventos: `AI_DECISION` (qué calculó Prolog) y luego el `DECISION` normal.
+
+# Envío concurrente de eventos
+
+Navegador, una instancia de `EventPublisher` por partida:
+
+1. Cola en memoria más copia en `localStorage` con clave `outbox:<matchId>`. Así un fallo de red o una pestaña que se cae no pierde eventos.
+2. Envía cada 500 ms o al juntar 20 eventos. Nunca hay dos envíos de la misma partida en vuelo a la vez, así el orden de llegada sigue el de `seq`. Partidas distintas sí envían en paralelo.
+3. Si falla, reintenta con esperas de 1, 2, 4, 8 y 16 s, y sigue reintentando cada 30 s mientras la pestaña esté abierta. El juego no espera a la red en ningún caso.
+4. Al cerrar la pestaña (`pagehide`), emite `PLAYER_LEFT` y `MATCH_FINISHED` si la partida estaba abierta y vacía la cola con `navigator.sendBeacon`.
+5. Al cargar la consola, busca outboxes huérfanos de pestañas anteriores y los reenvía.
+6. Los reenvíos duplicados no son problema: GameStats descarta `eventId` repetidos como `DUPLICATE_EVENT`.
+
+Servidor:
+
+1. `POST /api/events` recibe un arreglo de hasta 500 eventos. Revisa solo lo necesario para escribir el archivo (`gameId` y `matchId` presentes y con caracteres seguros para una ruta). La validación real la hace GameStats.
+2. `MatchWriteQueue`: un mapa `matchId → promesa encadenada`. Cada lote de una partida espera a que termine la escritura anterior de esa misma partida, así las líneas nunca se intercalan. Partidas distintas escriben en paralelo.
+3. `EventSink` es una interfaz con dos implementaciones elegidas por `EVENT_SINK`: `FileSink` (por defecto) agrega líneas con `fs.promises.appendFile` a `EVENTS_DIR/<gameId>/<matchId>.jsonl`; `HttpSink` reenvía al `ingestor` con reintentos.
+4. Responde 202 `{"written": n}` cuando las líneas quedaron escritas, o 503 si el disco o el `ingestor` fallan, para que el navegador reintente.
