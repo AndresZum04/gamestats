@@ -114,3 +114,6 @@ aqui los jugadores cpu 1 y 2 eligieron plantarse como jugada predeterminada
 ![jugada predeterminada de blackjack cuando prolog no responde](docs/img/captura_error_controlado_blackjack2.png)
 
 ## Enlaces y video
+
+[link a la demostracion en video](https://youtu.be/D3QLwy_p030)
+
