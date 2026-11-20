@@ -14,6 +14,41 @@ Internet durante la primer instalacion
 ## Instalación
 pasos de la instalacion a detalle en [instrucciones.md](https://github.com/AndresZum04/gamestats/blob/main/console/docs/instalacion.md)
 
+#### Paso 1 - clonar repositorio
+
+Clonar el repositorio con:
+```bash
+git clone https://github.com/AndresZum04/gamestats.git
+cd gamestats
+cd console
+```
+No hay submódulo: la consola vive en la carpeta `console/` dentro del mismo repositorio de GameStats. Todas las rutas de este documento son relativas a `console/` y los comandos se corren desde ahí.
+
+#### Paso 2 - ejecutar instalador
+
+En Linux o Mac: 
+```bash
+./install.sh
+```
+En Windows: 
+```bash
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+#### Paso 3 - ejecución de la consola
+
+Para probar la consola localmente se debe abrir este link: `http://localhost:3000`
+
+#### Desinstalacion
+En Linux o Mac:
+```bash
+./uninstall.sh
+```
+
+en Windows:
+```bash
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
+```
+
 ## Cómo jugar
 una vez instalado GameConsole, se debe abrir este link para jugar localmente: http://localhost:3000/
 (agregar el link del azure cuando este listo)
