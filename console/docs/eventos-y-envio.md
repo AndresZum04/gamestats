@@ -76,7 +76,7 @@ Ids de jugador: los humanos usan `p-` más el nombre en minúsculas sin espacios
 
 Cada decisión de un CPU produce dos eventos: `AI_DECISION` (qué calculó Prolog) y luego el `DECISION` normal.
 
-# Envío concurrente de eventos
+## Envío concurrente de eventos
 
 Navegador, una instancia de `EventPublisher` por partida:
 
