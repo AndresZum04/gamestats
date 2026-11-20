@@ -89,8 +89,3 @@ Salida:
 
 {"decision":"DOUBLE","evHit":0.3337,"evStand":-0.1537,"evDouble":0.6674,"reason":"doblar: EV 0.67 contra plantarse -0.15, pedir 0.33"}
 Con 11 es muy probable llegar a 21 con un 10, y la casa con 6 está débil, así que conviene apostar el doble.
-
-Si desea probarlo, con el sistema corriendo, en PowerShell:
-
-Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/ai/blackjack/decision -ContentType "application/json" -Body '{"hand":["10H","2S"],"dealerUpcard":"10D","canDouble":true,"shoe":{"A":24,"2":24,"3":24,"4":24,"5":24,"6":24,"7":24,"8":24,"9":24,"10":96}}'
-(en Git Bash es lo mismo con curl -X POST ... -H "Content-Type: application/json" -d '...')
