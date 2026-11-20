@@ -90,6 +90,10 @@ Cabe recalcar que GameConsole no analiza los juegos de su panel en ninguna maner
 ![panel de gameconsole donde gamestats refleja patrones y eventos](docs/img/captura_panel_gameconsole.png)
 
 ## Pruebas
+para correr las pruebas, se debe abrir el cmd y ubicarse en la carpeta `console` del repositorio clonado.
+
+se debe ejecutar `npm ci`, `npm run test`, `npm run e2e`
+## manejo de errores
 Varios juegos y el mismo GameConsole pueden manejar errores.
 ### Panel
 en el caso de que se pierda conexion con GameStats, el panel muestra los ultimos eventos antes de que se perdiera la conexion mientras GameConsole guarda los nuevos eventos que esten ocurriendo en ese momento y apenas recupere conexion los envia a GameStats para que siga su curso.
