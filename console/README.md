@@ -1,5 +1,5 @@
 # GameConsole
-
+[![CI](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml/badge.svg)](https://github.com/AndresZum04/gamestats/actions/workflows/ci.yml)
 
 
 ## Qué es y cómo se conecta con GameStats
