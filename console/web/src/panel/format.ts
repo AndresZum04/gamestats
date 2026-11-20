@@ -1,6 +1,8 @@
 // Formatting only: how a number from GameStats is written. Nothing here
 // adds, averages or derives a figure; the values come computed by GameStats.
 
+import type { Leaderboard } from "./types.js";
+
 const integer = new Intl.NumberFormat("es-CR", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("es-CR", { maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat("es-CR", { style: "percent", maximumFractionDigits: 1 });
@@ -130,3 +132,32 @@ const LABELS: Readonly<Record<string, string>> = {
 };
 
 export const label = (key: string): string => LABELS[key] ?? key;
+
+/**
+ * The leaderboard's columns and rows, in the order GameStats ranked them. A
+ * game for one person (Snake, singlePlayer) has nothing to win against, so
+ * it shows no wins columns: every player would have 100 % (issue #12).
+ */
+export function leaderboardTable(board: Leaderboard | null): {
+  headers: string[];
+  rows: string[][];
+} {
+  const metric = board?.metric ? label(board.metric) : "métrica";
+  const solo = board?.singlePlayer === true;
+  const headers = solo
+    ? ["#", "Jugador", "Partidas", metric]
+    : ["#", "Jugador", "Partidas", "Ganadas", "% ganadas", metric];
+  const rows = (board?.entries ?? []).map((e) =>
+    solo
+      ? [count(e.rank), e.playerId, count(e.matches), number(e.avgMetric)]
+      : [
+          count(e.rank),
+          e.playerId,
+          count(e.matches),
+          count(e.wins),
+          pct(e.winPct),
+          number(e.avgMetric),
+        ],
+  );
+  return { headers, rows };
+}
