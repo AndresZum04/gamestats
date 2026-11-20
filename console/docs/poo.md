@@ -1178,3 +1178,20 @@ ConsoleApp ..> EventPublisher : uno por partida
 2. Atributos privados (`#campo` o `private`) y estado expuesto solo por métodos de lectura.
 3. Herencia solo donde hay un "es un" real (`Game`, `Player`); lo demás por composición (`BlackjackTable` tiene un `Shoe`, un `Dealer` y asientos).
 4. `Rng` con semilla inyectable en cada juego para que las pruebas y el modo automático sean reproducibles.
+
+## Encapsulamiento
+Consiste en ocultar el estado interno de un objeto y exponer solo una interfaz controlada, de modo que nadie pueda dejarlo en un estado inválido. 
+### ejemplo en GameConsole
+En Seat los campos #chips, #bet, #hand y #state son privados de TypeScript. Desde fuera solo se leen mediante getters (chips, bet, canDouble) y se modifican con métodos que respetan las reglas, como placeBet(), double() o settle(). Así, ninguna otra clase puede cambiar las fichas directamente. Por ejemplo, BlackjackGame no puede poner seat.chips = 5000, y solo puede liquidar una mano con settle(result).
+## Abstraccion
+Consiste en mostrar solo lo esencial de un concepto y esconder cómo se logra, definiendo qué se debe hacer sin decir cómo.
+### ejemplo en GameConsole
+Game es una clase abstracta que declara los métodos startData(), onStart() y buildResults() sin implementarlos, y deja a cada juego decidir cómo hacerlos. ConsoleApp e InstanceManager trabajan solo con Game y GameView, sin saber si hay una trivia, una serpiente o una mesa de blackjack detrás. Otro caso es DecisionStrategy, una interfaz que oculta si la decisión la toma una persona, una estrategia básica o Prolog.
+## Herencia
+Permite que una clase reutilice y especialice el comportamiento de otra, creando una relación “es un”.
+### ejemplo en GameConsole
+TriviaGame extends Game<"trivia"> hereda todo el ciclo de vida: start(), finish(), abandon(), disconnect(), subscribe() y la emisión de eventos comunes como MATCH_STARTED y PLAYER_JOINED. Solo aporta lo propio, que son las preguntas, los turnos y los puntos. Lo mismo ocurre con Player, de la que heredan HumanPlayer y BotPlayer, y de esta última TriviaBot y PrologBlackjackPlayer.
+## Composicion
+Consiste en construir una clase a partir de otras que contiene, con una relación “tiene un”, en lugar de heredar de ellas.
+### ejemplo en GameConsole
+BlackjackTable no extiende nada, sino que contiene un Shoe, un Dealer y una lista de Seat. A su vez, cada Seat contiene un Player, una DecisionStrategy y una Hand, y cada Hand contiene objetos Card. Esto permite cambiar piezas sin tocar el resto. Por ejemplo, se puede darle a un Seat una HumanDecision o una PrologDecision sin cambiar ni Seat ni BlackjackTable. Game también usa composición, porque tiene un MatchContext, un EventFactory y un EventOutlet.
