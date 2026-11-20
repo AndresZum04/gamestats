@@ -2,11 +2,11 @@
 
 ## EV (Expected value)
 
-es el resultado promedio obtenido por prolog despues de hacer backtracking a varias posibilidades de una jugada. se calcula de la siguiente forma: EV = (% de ganar)(fichas apostadas) - (% de perder)(fichas apostadas)
+es el resultado promedio obtenido por prolog despues de calcular varias posibilidades de una jugada de forma recursiva. se calcula de la siguiente forma: EV = (% de ganar)(fichas apostadas) - (% de perder)(fichas apostadas)
 
 entonces, si se apostaron 20 fichas y en una jugada plantarse (no pedir mas cartas) tiene 60% de posibilidades de ganar y 40% de perder, el EV seria EV= 0.6*(20)-0.4*(20)=4
 eso significa que en promedio se ganan 4 fichas por esa jugada.
-Un EV positivo significa que se gana fichas en promedio, y un EV negativo significa que se gana fichas en promedio. Esta es la metrica que la IA de prolog consulta antes de tomar cualquier decision
+Un EV positivo significa que se gana fichas en promedio, y un EV negativo significa que se pierde fichas en promedio. Esta es la metrica que la IA de prolog consulta antes de tomar cualquier decision
 
 En el codigo de prolog se tienen dos decisiones:
     1. que jugada hacer (STAND, HIT, DOUBLE)
