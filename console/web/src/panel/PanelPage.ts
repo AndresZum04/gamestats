@@ -7,7 +7,7 @@ import {
   count,
   duration,
   label,
-  number,
+  leaderboardTable,
   pct,
   ratio,
   value,
@@ -274,19 +274,8 @@ export class PanelPage {
   }
 
   #leaderboard(board: Leaderboard | null): HTMLElement {
-    const metric = board?.metric ? label(board.metric) : "métrica";
-    return table(
-      ["#", "Jugador", "Partidas", "Ganadas", "% ganadas", metric],
-      (board?.entries ?? []).map((e) => [
-        count(e.rank),
-        e.playerId,
-        count(e.matches),
-        count(e.wins),
-        pct(e.winPct),
-        number(e.avgMetric),
-      ]),
-      "Sin jugadores todavía.",
-    );
+    const { headers, rows } = leaderboardTable(board);
+    return table(headers, rows, "Sin jugadores todavía.");
   }
 
   #matches(matches: MatchSummary[], empty: string): HTMLElement {

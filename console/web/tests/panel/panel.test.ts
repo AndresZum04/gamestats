@@ -1,7 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ago, count, duration, pct, ratio, value } from "../../src/panel/format.js";
+import {
+  ago,
+  count,
+  duration,
+  leaderboardTable,
+  pct,
+  ratio,
+  value,
+} from "../../src/panel/format.js";
 import { chartData } from "../../src/panel/GameChart.js";
 import type { GameStatsView } from "../../src/panel/types.js";
 
@@ -69,6 +77,18 @@ describe("chartData", () => {
 });
 
 describe("format", () => {
+  it("a game for one person shows no wins columns in its leaderboard (issue #12)", () => {
+    const entry = { rank: 1, playerId: "p-rafa", matches: 3, wins: 3, winPct: 100, avgMetric: 23 };
+    const snake = leaderboardTable({ metric: "maxLength", singlePlayer: true, entries: [entry] });
+    expect(snake.headers).toEqual(["#", "Jugador", "Partidas", "largo máximo"]);
+    expect(snake.rows).toEqual([["1", "p-rafa", "3", "23"]]);
+
+    const blackjack = leaderboardTable({ metric: "finalChips", entries: [entry] });
+    expect(blackjack.headers).toContain("Ganadas");
+    expect(blackjack.headers).toContain("% ganadas");
+    expect(blackjack.rows[0]).toHaveLength(6);
+  });
+
   it("writes the numbers of GameStats", () => {
     expect(count(1234)).toMatch(/1.234/);
     expect(count(undefined)).toBe("—");
