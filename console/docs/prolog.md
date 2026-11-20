@@ -52,3 +52,7 @@ apuesta = unidad mínima × max(1, conteo verdadero + 1), limitada por `maxBet` 
 ## integracion
 
 el navegador llama a `POST /api/ai/blackjack/decision` del servidor de la consola, que reenvía a Prolog con un timeout de 2 s y 2 reintentos. Si Prolog no responde, el CPU se planta y el `AI_DECISION` sale con `fallback: true`; la vista muestra un aviso. Un CPU tarda entre 400 y 800 ms en mostrar su jugada (pausa visual), sin bloquear otras instancias.
+
+# Ejemplos reales
+
+##
