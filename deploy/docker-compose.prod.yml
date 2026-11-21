@@ -1,6 +1,7 @@
-# GameStats en producción (VM de Azure). Igual al docker-compose.yml de
-# desarrollo, pero con las imágenes ya publicadas en GHCR en lugar de
-# compilarlas, reinicio automático y límites de memoria para una VM chica.
+# GameStats y GameConsole en producción (VM de Azure). Igual al
+# docker-compose.yml de desarrollo, pero con las imágenes ya publicadas en GHCR
+# en lugar de compilarlas, reinicio automático y límites de memoria para una
+# VM chica. Desde afuera: 8081 el tablero de GameStats, 8080 la consola.
 #
 #   TAG=<sha corto> docker compose -f docker-compose.prod.yml up -d
 #
@@ -29,11 +30,17 @@ services:
     restart: unless-stopped
     user: *user
     mem_limit: 128m
-    ports: ["8080:8080"]
+    # Solo dentro de la VM: el puerto 8080 de afuera es de la consola (el
+    # firewall de Azure abre 8080 y 8081). La consola le habla por la red interna.
+    ports: ["127.0.0.1:8079:8080"]
     environment:
       ANALYZER_URL: http://analyzer:8081
       CONFIG_DIR: /app/configs/games
       DATA_DIR: /data
+      # Ajustes para GameConsole, iguales a console/compose.gamestats-override.yml:
+      # una pausa normal no cierra una partida, y hay copias LIVE para el panel.
+      MATCH_IDLE_TIMEOUT: 900s
+      LIVE_SNAPSHOT_INTERVAL: 10s
     volumes: [*data]
     depends_on: { analyzer: { condition: service_healthy } }
     healthcheck:
@@ -49,3 +56,43 @@ services:
     command: ["--mode", "stream", "--events-dir", "/data/events", "--seed", "${SIM_SEED:-0}"]
     volumes: [*data]
     depends_on: { ingestor: { condition: service_healthy } }
+
+  # GameConsole (Proyecto 2): la IA de Blackjack en Prolog y la consola web.
+  # La consola escribe los eventos en la misma carpeta que lee el ingestor,
+  # igual que console/docker-compose.yml. Prolog no se publica afuera: la
+  # consola lo llama por la red interna.
+  prolog:
+    image: ${REGISTRY:-ghcr.io/andreszum04}/gameconsole-prolog:${TAG:-latest}
+    restart: unless-stopped
+    mem_limit: 128m
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "swipl",
+          "-g",
+          "use_module(library(http/http_open)),http_open('http://localhost:4000/health',S,[]),close(S)",
+          "-t",
+          "halt",
+        ]
+      interval: 5s
+      retries: 20
+
+  console:
+    image: ${REGISTRY:-ghcr.io/andreszum04}/gameconsole-console:${TAG:-latest}
+    restart: unless-stopped
+    user: *user
+    mem_limit: 192m
+    # Afuera en el 8080, que ya está abierto en el firewall de Azure.
+    ports: ["8080:3000"]
+    environment:
+      EVENT_SINK: file
+      EVENTS_DIR: /data/events
+      GAMESTATS_INGESTOR_URL: http://ingestor:8080
+      GAMESTATS_ANALYZER_URL: http://analyzer:8081
+      PROLOG_URL: http://prolog:4000
+    volumes: [*data]
+    depends_on:
+      ingestor: { condition: service_healthy }
+      analyzer: { condition: service_healthy }
+      prolog: { condition: service_healthy }

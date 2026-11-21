@@ -2,6 +2,15 @@
 
 Además del instalador, GameStats queda desplegado en una máquina virtual de Azure que se actualiza sola con cada cambio en `main`. Es un extra: muestra el sistema corriendo en un entorno remoto, pero la forma de entrega sigue siendo el instalador (ver [instalacion.md](instalacion.md)).
 
+Desde el 2026-11-20 la misma VM corre también GameConsole (Proyecto 2): la consola web y la IA de Blackjack en Prolog, con las imágenes `gameconsole-console` y `gameconsole-prolog` que ya publicaba el CD. Desde afuera quedan dos puertos:
+
+| Puerto | Qué hay |
+| --- | --- |
+| 8080 | GameConsole: http://130.131.106.122:8080 |
+| 8081 | Tablero y API del analyzer de GameStats: http://130.131.106.122:8081/dashboard |
+
+El 8080 antes era el ingestor. Como no se podía abrir un puerto nuevo en el firewall de Azure, la consola toma el 8080 y el ingestor queda solo dentro de la VM (`127.0.0.1:8079`). La consola no lo necesita desde afuera: escribe los eventos en la carpeta compartida `gamestats-data/events`, igual que en la instalación local.
+
 ## Cómo funciona
 
 ```mermaid
@@ -20,14 +29,14 @@ flowchart LR
 1. Un push a `main` dispara la CI ([cicd.md](cicd.md)). Si termina en verde, el workflow `cd.yml` construye las imágenes del analyzer, el ingestor y el simulador, y las publica en GitHub Container Registry (GHCR) con dos etiquetas: el SHA corto del commit y `latest`. Un tag `v1.0.0` publica además la etiqueta `v1.0.0`.
 2. Si el secreto `DEPLOY_HOST` está configurado, copia `deploy/docker-compose.prod.yml` y `deploy/deploy.sh` a `~/gamestats` en la VM y corre `./deploy.sh <SHA>` por SSH.
 3. `deploy.sh` descarga esas imágenes, levanta los servicios y espera a que estén sanos.
-4. El workflow comprueba desde afuera que `http://IP:8081/health` responde.
+4. El workflow comprueba desde afuera que `http://IP:8081/health` (GameStats) y `http://IP:8080/health` (GameConsole) responden.
 
 Sin `DEPLOY_HOST`, CD solo publica las imágenes y termina en verde. Así el repositorio funciona antes de crear la VM.
 
 `docker-compose.prod.yml` es igual al de desarrollo, con tres diferencias:
 - usa las imágenes publicadas en vez de compilarlas;
 - se reinicia solo si la VM se reinicia;
-- limita la memoria de cada servicio: analyzer 512 MB, ingestor y simulador 128 MB cada uno.
+- limita la memoria de cada servicio: analyzer 512 MB, ingestor, simulador y Prolog 128 MB cada uno, consola 192 MB.
 
 ## 1. Crear la máquina virtual
 
@@ -39,7 +48,7 @@ En el portal de Azure, con la suscripción de Azure for Students: "Máquinas vir
 | Tamaño | B1s (1 vCPU, 1 GB). Entra en los servicios gratuitos de la suscripción de estudiante. Si se queda corta, B2s (2 vCPU, 4 GB) |
 | Autenticación | Clave pública SSH |
 | Usuario | `azureuser` (o el que se prefiera) |
-| Puertos de entrada | 22 (SSH), 8080 (ingestor) y 8081 (analyzer y tablero) |
+| Puertos de entrada | 22 (SSH), 8080 (GameConsole; antes el ingestor) y 8081 (analyzer y tablero) |
 | IP pública | Estática, para que no cambie al apagar la VM |
 
 La clave SSH conviene generarla aparte, solo para este despliegue:
@@ -88,18 +97,7 @@ Con los secretos cargados, cualquier push a `main` despliega. Para no esperar un
 
 Al terminar, el job "Verificar que responde desde afuera" muestra la dirección del tablero: `http://IP_DE_LA_VM:8081/dashboard`.
 
-Para llenar el tablero remoto desde la computadora propia, sin copiar nada a la VM:
-
-```bash
-cd simulator
-go run ./cmd/simulator --mode http --target http://IP_DE_LA_VM:8080 --seed 0
-```
-
-Sin Go instalado, con Docker:
-
-```bash
-docker run --rm ghcr.io/andreszum04/gamestats-simulator:latest --mode http --target http://IP_DE_LA_VM:8080 --seed 0
-```
+Para llenar el tablero remoto se puede jugar en GameConsole (http://IP_DE_LA_VM:8080) o correr el simulador en la propia VM (ver "Operación"). Desde el 2026-11-20 el ingestor ya no se ve desde afuera, así que el simulador en modo `http` desde la computadora propia ya no llega.
 
 ## Volver a una versión anterior
 
@@ -128,8 +126,8 @@ Los puertos 8080 y 8081 quedan abiertos a internet y sin autenticación. Para un
 
 El sistema está desplegado en una VM de Azure y se actualiza solo con cada cambio en `main`:
 
+- GameConsole: http://130.131.106.122:8080
 - Tablero: http://130.131.106.122:8081/dashboard
-- API del ingestor: http://130.131.106.122:8080/api/v1/stats
 
 Verificado el 2026-10-14 desde afuera de la VM: `/health` responde en los dos puertos; el tablero muestra trivia, snake y blackjack con 108 partidas (36 de cada juego), los seis patrones P1 a P6 y el panel "Ingestor en vivo"; y la versión desplegada es la del último commit de `main`.
 

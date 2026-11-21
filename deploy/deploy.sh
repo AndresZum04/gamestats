@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Despliega (o vuelve atrás) GameStats en la VM con las imágenes de GHCR.
+# Despliega (o vuelve atrás) GameStats y GameConsole en la VM con las imágenes de GHCR.
 # Lo ejecuta el workflow cd.yml por SSH, y también se puede correr a mano:
 #
 #   ./deploy.sh <tag>        # despliega esa versión (sha corto o v1.0.0)
@@ -18,7 +18,7 @@ DATA="$(pwd)/gamestats-data"
 if command -v cygpath >/dev/null 2>&1; then DATA="$(cygpath -m "$DATA")"; fi
 COMPOSE=(docker compose -f docker-compose.prod.yml)
 
-echo "==> Desplegando GameStats con TAG=$TAG"
+echo "==> Desplegando GameStats y GameConsole con TAG=$TAG"
 for sub in events results rejected outbox state; do mkdir -p "$DATA/$sub"; done
 cat > .env <<ENV
 GAMESTATS_DATA=$DATA
@@ -26,6 +26,7 @@ GAMESTATS_UID=$(id -u)
 GAMESTATS_GID=$(id -g)
 TAG=$TAG
 ${IMAGE_PREFIX:+IMAGE_PREFIX=$IMAGE_PREFIX}
+${IMAGE_PREFIX:+REGISTRY=${IMAGE_PREFIX%/gamestats}}
 ENV
 
 if [ -n "${GHCR_PAT:-}" ]; then
@@ -38,4 +39,4 @@ fi
 "${COMPOSE[@]}" up -d --wait --wait-timeout 180
 "${COMPOSE[@]}" ps
 docker image prune -f >/dev/null
-echo "==> GameStats $TAG desplegado"
+echo "==> GameStats y GameConsole $TAG desplegados"

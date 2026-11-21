@@ -51,6 +51,9 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 ## Cómo jugar
 una vez instalado GameConsole, se debe abrir este link para jugar localmente: http://localhost:3000/
+
+También está desplegado en una VM de Azure, sin instalar nada: http://130.131.106.122:8080 (el tablero de GameStats de esa misma VM está en http://130.131.106.122:8081/dashboard). Se actualiza solo con cada cambio en `main`; los detalles están en [deployment.md](../docs/deployment.md).
+
 una vez en gameconsole se presentara la siguiente pantalla
 ![pantalla inicial de gameconsole](docs/img/captura_pantalla_gameConsole.png)
 

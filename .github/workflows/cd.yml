@@ -2,7 +2,7 @@
 # publica en GitHub Container Registry las imágenes de GameStats (analyzer,
 # ingestor, simulator) y de la consola (gameconsole-console y
 # gameconsole-prolog) y, si la VM de Azure está configurada (secreto
-# DEPLOY_HOST), actualiza GameStats por SSH. Si el commit solo cambió
+# DEPLOY_HOST), actualiza GameStats y GameConsole por SSH. Si el commit solo cambió
 # documentación, no hace nada.
 name: CD
 
@@ -160,8 +160,10 @@ jobs:
           HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           for i in $(seq 1 10); do
-            if curl --fail --silent "http://$HOST:8081/health"; then
-              echo; echo "Desplegado: http://$HOST:8081/dashboard"; exit 0
+            if curl --fail --silent "http://$HOST:8081/health" \
+              && curl --fail --silent "http://$HOST:8080/health"; then
+              echo; echo "Tablero de GameStats: http://$HOST:8081/dashboard"
+              echo "GameConsole: http://$HOST:8080"; exit 0
             fi
             echo "Intento $i sin respuesta, esperando..."; sleep 6
           done
