@@ -1,5 +1,6 @@
 import { CONSOLE_ID, type GameId } from "@gameconsole/shared";
 import { HumanPlayer } from "../core/Player.js";
+import { uuidV4 } from "../core/uuid.js";
 import { PanelPage } from "../panel/PanelPage.js";
 import { EventPublisher } from "../events/EventPublisher.js";
 import { Outbox } from "../events/Outbox.js";
@@ -20,11 +21,11 @@ function tabSessionId(): string {
   try {
     const existing = sessionStorage.getItem(SESSION_KEY);
     if (existing) return existing;
-    const id = `tab-${crypto.randomUUID().slice(0, 8)}`;
+    const id = `tab-${uuidV4().slice(0, 8)}`;
     sessionStorage.setItem(SESSION_KEY, id);
     return id;
   } catch {
-    return `tab-${crypto.randomUUID().slice(0, 8)}`;
+    return `tab-${uuidV4().slice(0, 8)}`;
   }
 }
 
