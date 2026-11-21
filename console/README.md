@@ -89,9 +89,63 @@ Cabe recalcar que GameConsole no analiza los juegos de su panel en ninguna maner
 ![panel de gameconsole donde gamestats refleja patrones y eventos](docs/img/captura_panel_gameconsole.png)
 
 ## Pruebas
-para correr las pruebas, se debe abrir el cmd y ubicarse en la carpeta `console` del repositorio clonado.
+GameConsole tiene tres tipos de pruebas. Todos los comandos se corren desde la carpeta `console` del repositorio clonado, en una terminal (PowerShell, cmd o Git Bash en Windows; la terminal normal en Linux o Mac). Se necesita Node.js 20 o más nuevo.
 
-se debe ejecutar `npm ci`, `npm run test`, `npm run e2e`
+Las tres se corren solas en GitHub Actions con cada cambio (el badge de CI de arriba muestra si pasaron).
+
+### 1. Pruebas unitarias (Vitest)
+
+Prueban cada pieza por separado, sin levantar nada: las reglas de cada juego, los eventos que genera, el envío a GameStats, el servidor de la consola y el formato del panel.
+
+```bash
+npm ci        # instala las dependencias (solo la primera vez)
+npm run test  # corre las pruebas
+```
+
+Son 254 pruebas en tres partes:
+
+| Parte | Qué prueba | Pruebas |
+| --- | --- | --- |
+| `shared` | que cada evento cumpla el esquema y el contrato de GameStats | 123 |
+| `web` | los juegos (Trivia, Serpiente, Blackjack), las instancias, el envío de eventos y el panel | 105 |
+| `server` | el servidor de la consola: recibir y reenviar eventos, el puente a Prolog y las estadísticas | 26 |
+
+Al final cada parte muestra una línea como `Tests  105 passed (105)`. Si algo falla, dice qué prueba fue y por qué.
+
+### 2. Pruebas de la IA en Prolog (plunit)
+
+Prueban las reglas de `prolog/blackjack_ai.pl`: el valor de las manos, el cálculo del valor esperado (EV) y las apuestas. Son 15 pruebas. Como no hace falta instalar SWI-Prolog, se corren con Docker:
+
+En Linux, Mac o Git Bash:
+```bash
+docker run --rm -v "$PWD/prolog:/app" -w /app swipl:10.0.2 swipl -g run_tests -t halt tests/blackjack_ai.plt
+```
+En PowerShell:
+```bash
+docker run --rm -v "${PWD}/prolog:/app" -w /app swipl:10.0.2 swipl -g run_tests -t halt tests/blackjack_ai.plt
+```
+Al final dice `All 15 tests passed`.
+
+### 3. Pruebas de punta a punta (Playwright)
+
+Abren un navegador de verdad (Chromium) y usan la consola como lo haría una persona, con el sistema completo corriendo: consola, GameStats y Prolog. Por eso **primero hay que tener la consola instalada y abierta** (paso 2 de la instalación) en `http://localhost:3000`.
+
+```bash
+npx playwright install chromium  # descarga el navegador (solo la primera vez)
+npm run e2e
+```
+
+Son 4 pruebas y tardan unos 3 minutos:
+
+| Prueba | Qué comprueba |
+| --- | --- |
+| `blackjack-person` | una persona juega dos rondas de Blackjack con los botones |
+| `concurrency` | 6 partidas automáticas al mismo tiempo (3 en una consola y 3 en otras pestañas) llegan a GameStats sin mezclarse |
+| `panel` | el panel muestra una partida en curso con sus estadísticas parciales y después la partida terminada |
+| `prolog` | una mesa de Blackjack con 3 CPU termina, y los CPU decidieron con Prolog |
+
+Al final dice `4 passed`. Si una falla, en `e2e/playwright-report` queda un reporte con capturas; se abre con `npx playwright show-report e2e/playwright-report`.
+
 ## manejo de errores
 Varios juegos y el mismo GameConsole pueden manejar errores.
 ### Panel
