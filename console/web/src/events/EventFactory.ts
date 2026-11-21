@@ -9,6 +9,7 @@ import {
   type GameId,
 } from "@gameconsole/shared";
 import type { MatchContext } from "../core/MatchContext.js";
+import { uuidV4 } from "../core/uuid.js";
 
 export interface EventOptions {
   playerId?: string | null;
@@ -43,11 +44,7 @@ export class EventFactory<G extends GameId> {
   readonly #source: EventSource;
   readonly #newId: () => string;
 
-  constructor(
-    context: MatchContext<G>,
-    source: EventSource,
-    newId: () => string = () => crypto.randomUUID(),
-  ) {
+  constructor(context: MatchContext<G>, source: EventSource, newId: () => string = uuidV4) {
     this.#context = context;
     this.#source = source;
     this.#newId = newId;
